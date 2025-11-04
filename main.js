@@ -209,13 +209,17 @@ function modifyUnsteamIni(iniPath, exeName, appId) {
   try {
     const config = ini.parse(fs.readFileSync(iniPath, 'utf-8'));
 
-    // Modify the necessary fields
-    if (!config.config) {
-      config.config = {};
+    // Modify exe_file in [loader] section
+    if (!config.loader) {
+      config.loader = {};
     }
+    config.loader.exe_file = exeName;
 
-    config.config.exe_file = exeName;
-    config.config.real_app_id = appId;
+    // Modify real_app_id in [game] section
+    if (!config.game) {
+      config.game = {};
+    }
+    config.game.real_app_id = appId;
 
     fs.writeFileSync(iniPath, ini.stringify(config));
     return true;
