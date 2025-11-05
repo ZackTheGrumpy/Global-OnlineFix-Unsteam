@@ -67,6 +67,7 @@ The following games have been successfully tested with GlobalFix and confirmed t
 - **Europa Universalis IV**
 - **Veins**
 - **Tavern Keeper**
+- **Shape Of Dreams**
 
 ### ❌ Not Compatible
 
@@ -83,6 +84,9 @@ These games have been tested and are **not compatible** with GlobalFix due to th
 - **Warhammer: Rogue Trader** - Photon networking
 - **Abiotic Factor** - LAN works, but not standard online multiplayer
 - **Phasmophobia** - Photon networking
+- **Mortal Kombat X** - freezes before main menu
+- **Lego 2k Drive** - Crashes automatically and opens web page for launch errors.
+- **Wayfinder** - Has EasyAntiCheat
 
 **Note**: This list is not exhaustive. Many other games will work or not work based on similar technical factors.
 
