@@ -120,7 +120,7 @@ function findGameByAppId(libraries, appId) {
   return null;
 }
 
-// Find the main executable in game folder
+// Find the main executable in game folder - returns full path to exe
 function findGameExe(gameFolder) {
   try {
     const files = fs.readdirSync(gameFolder);
@@ -142,14 +142,14 @@ function findGameExe(gameFolder) {
         const fullPath = path.join(gameFolder, file);
         if (fs.statSync(fullPath).isDirectory()) {
           const subExe = findGameExe(fullPath);
-          if (subExe) return subExe;
+          if (subExe) return subExe; // Already returns full path
         }
       }
       return null;
     }
 
-    // Prefer the first non-utility exe found
-    return exeFiles[0];
+    // Return full path to the first non-utility exe found
+    return path.join(gameFolder, exeFiles[0]);
   } catch (error) {
     console.error('Error finding exe:', error);
     return null;
@@ -191,7 +191,14 @@ async function downloadGlobalFix(destPath) {
 
 // Extract zip to destination using 7-Zip (supports LZMA and other compression methods)
 async function extractZip(zipPath, destPath) {
-  const pathTo7zip = sevenBin.path7za;
+  let pathTo7zip = sevenBin.path7za;
+
+  // When packaged, 7zip-bin is unpacked to app.asar.unpacked
+  // but sevenBin.path7za still points to app.asar, so we need to fix the path
+  if (app.isPackaged && pathTo7zip.includes('app.asar')) {
+    pathTo7zip = pathTo7zip.replace('app.asar', 'app.asar.unpacked');
+  }
+
   const seven = extractFull(zipPath, destPath, {
     $bin: pathTo7zip,
     recursive: true
@@ -208,12 +215,15 @@ async function extractZip(zipPath, destPath) {
 }
 
 // Modify unsteam.ini - preserve original format and comments
-function modifyUnsteamIni(iniPath, exeName, appId) {
+function modifyUnsteamIni(iniPath, exePath, dllPath, appId) {
   try {
     let content = fs.readFileSync(iniPath, 'utf-8');
 
-    // Replace exe_file in [loader] section
-    content = content.replace(/^exe_file=.*$/m, `exe_file=${exeName}`);
+    // Replace exe_file in [loader] section (can be filename or full path)
+    content = content.replace(/^exe_file=.*$/m, `exe_file=${exePath}`);
+
+    // Replace dll_file in [loader] section (can be filename or full path)
+    content = content.replace(/^dll_file=.*$/m, `dll_file=${dllPath}`);
 
     // Replace real_app_id in [game] section
     content = content.replace(/^real_app_id=.*$/m, `real_app_id=${appId}`);
@@ -354,34 +364,77 @@ ipcMain.handle('install-globalfix', async (event, appId) => {
       return { success: false, error: `Game with AppID ${appId} not found in any Steam library` };
     }
 
-    // Step 4: Find game executable
-    const gameExe = findGameExe(gameFolder);
-    if (!gameExe) {
+    // Step 4: Find game executable (returns full path)
+    const gameExeFullPath = findGameExe(gameFolder);
+    if (!gameExeFullPath) {
       return { success: false, error: 'Could not find game executable' };
     }
+
+    // Extract the directory containing the exe and the exe filename
+    const gameExeDir = path.dirname(gameExeFullPath);
+    const gameExeName = path.basename(gameExeFullPath);
 
     // Step 5: Download GlobalFix.zip
     const tempZipPath = path.join(app.getPath('temp'), 'GlobalFix.zip');
     await downloadGlobalFix(tempZipPath);
 
-    // Step 6: Extract to game folder
-    await extractZip(tempZipPath, gameFolder);
+    // Step 6: Extract to the directory containing the game exe
+    await extractZip(tempZipPath, gameExeDir);
 
-    // Step 7: Modify unsteam.ini
-    const iniPath = path.join(gameFolder, 'unsteam.ini');
-    if (!fs.existsSync(iniPath)) {
-      return { success: false, error: 'unsteam.ini not found after extraction' };
+    // Step 7: Handle unsteam.ini placement and configuration
+    // Check if exe is in a subdirectory or in the root
+    const exeInSubfolder = path.normalize(gameExeDir) !== path.normalize(gameFolder);
+
+    let finalIniPath;
+    let exePathForIni;
+    let dllPathForIni;
+
+    if (exeInSubfolder) {
+      // Exe is in a subfolder - need ini in BOTH locations with full paths
+      const extractedIniPath = path.join(gameExeDir, 'unsteam.ini');
+      const rootIniPath = path.join(gameFolder, 'unsteam.ini');
+
+      if (!fs.existsSync(extractedIniPath)) {
+        return { success: false, error: 'unsteam.ini not found after extraction' };
+      }
+
+      // Copy unsteam.ini to game root (keep original in exe folder too)
+      fs.copyFileSync(extractedIniPath, rootIniPath);
+
+      // Use full paths for exe and dll
+      exePathForIni = gameExeFullPath;
+      dllPathForIni = path.join(gameExeDir, 'unsteam64.dll');
+
+      // Modify BOTH copies of unsteam.ini with full paths
+      modifyUnsteamIni(extractedIniPath, exePathForIni, dllPathForIni, appId); // In exe folder
+      modifyUnsteamIni(rootIniPath, exePathForIni, dllPathForIni, appId);      // In root folder
+
+      finalIniPath = rootIniPath; // For logging purposes
+    } else {
+      // Exe is in root - only one ini needed, use filenames only
+      finalIniPath = path.join(gameExeDir, 'unsteam.ini');
+
+      if (!fs.existsSync(finalIniPath)) {
+        return { success: false, error: 'unsteam.ini not found after extraction' };
+      }
+
+      // Use just filenames
+      exePathForIni = gameExeName;
+      dllPathForIni = 'unsteam64.dll';
+
+      // Modify the single unsteam.ini
+      modifyUnsteamIni(finalIniPath, exePathForIni, dllPathForIni, appId);
     }
 
-    modifyUnsteamIni(iniPath, gameExe, appId);
-
     // Step 8: Modify Steam launch options
-    const launchOptionsPath = `"${path.join(gameFolder, 'unsteam_loader64.exe')}" %command%`;
+    // Launch options point to unsteam_loader64.exe which is always in the same folder as game exe
+    const launchOptionsPath = `"${path.join(gameExeDir, 'unsteam_loader64.exe')}" %command%`;
+
     let launchOptionsSuccess = false;
     let launchOptionsError = null;
 
     try {
-      launchOptionsSuccess = await modifySteamLaunchOptions(appId, gameFolder);
+      launchOptionsSuccess = await modifySteamLaunchOptions(appId, gameExeDir);
     } catch (error) {
       launchOptionsError = error.message;
     }
@@ -391,8 +444,8 @@ ipcMain.handle('install-globalfix', async (event, appId) => {
 
     return {
       success: true,
-      gameFolder: gameFolder,
-      gameExe: gameExe,
+      gameFolder: gameExeDir,
+      gameExe: gameExeName,
       launchOptionsSet: launchOptionsSuccess,
       launchOptionsPath: launchOptionsPath,
       launchOptionsError: launchOptionsError
