@@ -215,12 +215,15 @@ async function extractZip(zipPath, destPath) {
 }
 
 // Modify unsteam.ini - preserve original format and comments
-function modifyUnsteamIni(iniPath, exeName, appId) {
+function modifyUnsteamIni(iniPath, exePath, dllPath, appId) {
   try {
     let content = fs.readFileSync(iniPath, 'utf-8');
 
-    // Replace exe_file in [loader] section
-    content = content.replace(/^exe_file=.*$/m, `exe_file=${exeName}`);
+    // Replace exe_file in [loader] section (can be filename or full path)
+    content = content.replace(/^exe_file=.*$/m, `exe_file=${exePath}`);
+
+    // Replace dll_file in [loader] section (can be filename or full path)
+    content = content.replace(/^dll_file=.*$/m, `dll_file=${dllPath}`);
 
     // Replace real_app_id in [game] section
     content = content.replace(/^real_app_id=.*$/m, `real_app_id=${appId}`);
@@ -375,19 +378,53 @@ ipcMain.handle('install-globalfix', async (event, appId) => {
     const tempZipPath = path.join(app.getPath('temp'), 'GlobalFix.zip');
     await downloadGlobalFix(tempZipPath);
 
-    // Step 6: Extract to the directory containing the game exe (not root folder)
+    // Step 6: Extract to the directory containing the game exe
     await extractZip(tempZipPath, gameExeDir);
 
-    // Step 7: Modify unsteam.ini (should be in the same folder as the exe)
-    const iniPath = path.join(gameExeDir, 'unsteam.ini');
-    if (!fs.existsSync(iniPath)) {
-      return { success: false, error: 'unsteam.ini not found after extraction' };
+    // Step 7: Handle unsteam.ini placement and configuration
+    // Check if exe is in a subdirectory or in the root
+    const exeInSubfolder = path.normalize(gameExeDir) !== path.normalize(gameFolder);
+
+    let finalIniPath;
+    let exePathForIni;
+    let dllPathForIni;
+
+    if (exeInSubfolder) {
+      // Exe is in a subfolder - move ini to root and use full paths
+      const extractedIniPath = path.join(gameExeDir, 'unsteam.ini');
+      finalIniPath = path.join(gameFolder, 'unsteam.ini');
+
+      // Move unsteam.ini from exe directory to game root
+      if (fs.existsSync(extractedIniPath)) {
+        fs.copyFileSync(extractedIniPath, finalIniPath);
+        fs.unlinkSync(extractedIniPath); // Remove from exe directory
+      } else {
+        return { success: false, error: 'unsteam.ini not found after extraction' };
+      }
+
+      // Use full paths for exe and dll
+      exePathForIni = gameExeFullPath;
+      dllPathForIni = path.join(gameExeDir, 'unsteam64.dll');
+    } else {
+      // Exe is in root - leave ini in place and use filenames only
+      finalIniPath = path.join(gameExeDir, 'unsteam.ini');
+
+      if (!fs.existsSync(finalIniPath)) {
+        return { success: false, error: 'unsteam.ini not found after extraction' };
+      }
+
+      // Use just filenames
+      exePathForIni = gameExeName;
+      dllPathForIni = 'unsteam64.dll';
     }
 
-    modifyUnsteamIni(iniPath, gameExeName, appId);
+    // Modify unsteam.ini with appropriate paths
+    modifyUnsteamIni(finalIniPath, exePathForIni, dllPathForIni, appId);
 
-    // Step 8: Modify Steam launch options (use exe directory, not game root)
+    // Step 8: Modify Steam launch options
+    // Launch options point to unsteam_loader64.exe which is always in the same folder as game exe
     const launchOptionsPath = `"${path.join(gameExeDir, 'unsteam_loader64.exe')}" %command%`;
+
     let launchOptionsSuccess = false;
     let launchOptionsError = null;
 
