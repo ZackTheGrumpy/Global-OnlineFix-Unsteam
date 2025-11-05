@@ -87,6 +87,7 @@ These games have been tested and are **not compatible** with GlobalFix due to th
 - **Mortal Kombat X** - freezes before main menu
 - **Lego 2k Drive** - Crashes automatically and opens web page for launch errors.
 - **Wayfinder** - Has EasyAntiCheat
+- **Mortal Kombat legacy collection** - (their own servers)
 
 **Note**: This list is not exhaustive. Many other games will work or not work based on similar technical factors.
 
