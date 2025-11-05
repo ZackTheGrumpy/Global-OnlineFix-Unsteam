@@ -191,7 +191,14 @@ async function downloadGlobalFix(destPath) {
 
 // Extract zip to destination using 7-Zip (supports LZMA and other compression methods)
 async function extractZip(zipPath, destPath) {
-  const pathTo7zip = sevenBin.path7za;
+  let pathTo7zip = sevenBin.path7za;
+
+  // When packaged, 7zip-bin is unpacked to app.asar.unpacked
+  // but sevenBin.path7za still points to app.asar, so we need to fix the path
+  if (app.isPackaged && pathTo7zip.includes('app.asar')) {
+    pathTo7zip = pathTo7zip.replace('app.asar', 'app.asar.unpacked');
+  }
+
   const seven = extractFull(zipPath, destPath, {
     $bin: pathTo7zip,
     recursive: true
