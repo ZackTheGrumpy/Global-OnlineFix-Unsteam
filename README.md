@@ -68,6 +68,7 @@ The following games have been successfully tested with GlobalFix and confirmed t
 - **Veins**
 - **Tavern Keeper**
 - **Shape Of Dreams**
+- **The Headliners**
 
 ### ❌ Not Compatible
 
