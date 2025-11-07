@@ -99,6 +99,7 @@ function selectGame(appId, gameName) {
   gameSearchInput.value = gameName;
   searchDropdown.classList.add('hidden');
   installBtn.disabled = false;
+  unfixBtn.disabled = false;
 }
 
 // Close dropdown when clicking outside
