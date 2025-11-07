@@ -451,22 +451,40 @@ async function createSteamSettings(gameFolder, appId, goldbergOptions, achieveme
 
   // Create configs.user.ini
   const userIni = `[user::general]
-account_name=${goldbergOptions.username}
+account_name=${goldbergOptions.accountName}
 account_steamid=${goldbergOptions.steamId}
+language=${goldbergOptions.language}
 `;
   fs.writeFileSync(path.join(settingsFolder, 'configs.user.ini'), userIni, 'utf-8');
 
-  // Create configs.overlay.ini (overlay always on)
+  // Create configs.overlay.ini
   const overlayIni = `[overlay::general]
-enable_experimental_overlay=1
+enable_experimental_overlay=${goldbergOptions.enableOverlay ? '1' : '0'}
 `;
   fs.writeFileSync(path.join(settingsFolder, 'configs.overlay.ini'), overlayIni, 'utf-8');
 
   // Create configs.app.ini
-  const appIni = `[app::general]
+  let appIni = `[app::general]
 matchmaking_server_list_actual_type=1
 matchmaking_server_details_via_source_query=1
+listen_port=${goldbergOptions.listenPort}
 `;
+
+  // Add offline mode if enabled
+  if (goldbergOptions.offlineMode) {
+    appIni += 'offline=1\n';
+  }
+
+  // Add disable networking if enabled
+  if (goldbergOptions.disableNetworking) {
+    appIni += 'disable_networking=1\n';
+  }
+
+  // Add custom broadcast IP if enabled
+  if (goldbergOptions.useCustomBroadcastIp) {
+    appIni += `custom_broadcast_ip=${goldbergOptions.customBroadcastIp}\n`;
+  }
+
   fs.writeFileSync(path.join(settingsFolder, 'configs.app.ini'), appIni, 'utf-8');
 
   // Create steam_interfaces.txt (basic interfaces)
@@ -515,27 +533,31 @@ SteamNetworkingUtils004
       'utf-8'
     );
 
-    // Download achievement images
-    console.log(`Downloading ${achievementsData.achievements.length} achievement images...`);
-    for (const ach of achievementsData.achievements) {
-      if (ach.icon) {
-        const iconName = path.basename(ach.icon);
-        const iconPath = path.join(imagesFolder, iconName);
-        try {
-          await downloadImage(ach.icon, iconPath);
-        } catch (err) {
-          console.warn(`Failed to download icon: ${ach.icon}`, err);
+    // Download achievement images (only if enabled)
+    if (goldbergOptions.generateAchievementImages) {
+      console.log(`Downloading ${achievementsData.achievements.length} achievement images...`);
+      for (const ach of achievementsData.achievements) {
+        if (ach.icon) {
+          const iconName = path.basename(ach.icon);
+          const iconPath = path.join(imagesFolder, iconName);
+          try {
+            await downloadImage(ach.icon, iconPath);
+          } catch (err) {
+            console.warn(`Failed to download icon: ${ach.icon}`, err);
+          }
+        }
+        if (ach.icongray) {
+          const iconGrayName = path.basename(ach.icongray);
+          const iconGrayPath = path.join(imagesFolder, iconGrayName);
+          try {
+            await downloadImage(ach.icongray, iconGrayPath);
+          } catch (err) {
+            console.warn(`Failed to download icongray: ${ach.icongray}`, err);
+          }
         }
       }
-      if (ach.icongray) {
-        const iconGrayName = path.basename(ach.icongray);
-        const iconGrayPath = path.join(imagesFolder, iconGrayName);
-        try {
-          await downloadImage(ach.icongray, iconGrayPath);
-        } catch (err) {
-          console.warn(`Failed to download icongray: ${ach.icongray}`, err);
-        }
-      }
+    } else {
+      console.log('Skipping achievement image download (disabled in options)');
     }
   }
 
