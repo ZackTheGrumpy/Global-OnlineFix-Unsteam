@@ -1,6 +1,7 @@
 # GlobalFix Installer
 
 **A powerful automated installer for enabling online multiplayer and unlocking features in Steam games.**
+**All credits for Unsteam goes to cs rin ru user Emberantz**
 
 GlobalFix is an Electron-based application that streamlines the installation and configuration of online multiplayer fixes for Steam games. It enables peer-to-peer online gameplay for games that lack dedicated servers, unlocks online features in single-player titles, and can resolve compatibility issues by bypassing Steam DRM.
 
@@ -227,4 +228,5 @@ MIT License - See repository for details
 ---
 
 **Version**: 1.0.0
+
 **Last Updated**: November 2024
