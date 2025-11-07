@@ -130,6 +130,73 @@ input[type="text"]:focus {
   color: #999;
 }
 
+.options-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.checkbox-container input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.checkbox-label {
+  cursor: pointer;
+  font-weight: 600;
+  color: #667eea;
+  font-size: 1.05em;
+  margin: 0;
+}
+
+.goldberg-options {
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  border: 2px solid #667eea;
+  margin-top: 15px;
+}
+
+.goldberg-info {
+  background: #e8f4fd;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border-left: 4px solid #2196f3;
+}
+
+.goldberg-info p {
+  color: #1565c0;
+  font-size: 0.95em;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.input-help {
+  display: block;
+  font-size: 0.85em;
+  color: #666;
+  margin-top: -10px;
+  margin-bottom: 15px;
+  font-style: italic;
+}
+
+.required {
+  color: #f44336;
+  font-weight: bold;
+}
+
 .btn-primary {
   width: 100%;
   padding: 14px;

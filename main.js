@@ -346,8 +346,254 @@ ipcMain.handle('fetch-steam-apps', async () => {
   });
 });
 
+// Detect which Steam API DLL the game uses
+function detectSteamApiDll(gameFolder) {
+  const api64Path = path.join(gameFolder, 'steam_api64.dll');
+  const api32Path = path.join(gameFolder, 'steam_api.dll');
+
+  // Check recursively in subdirectories too
+  function searchDir(dir, filename) {
+    if (!fs.existsSync(dir)) return null;
+    const files = fs.readdirSync(dir);
+
+    for (const file of files) {
+      const fullPath = path.join(dir, file);
+      if (file.toLowerCase() === filename.toLowerCase()) {
+        return fullPath;
+      }
+      if (fs.statSync(fullPath).isDirectory()) {
+        const found = searchDir(fullPath, filename);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  if (fs.existsSync(api64Path)) {
+    return { path: api64Path, is64bit: true };
+  }
+  if (fs.existsSync(api32Path)) {
+    return { path: api32Path, is64bit: false };
+  }
+
+  // Search in subdirectories
+  const found64 = searchDir(gameFolder, 'steam_api64.dll');
+  if (found64) return { path: found64, is64bit: true };
+
+  const found32 = searchDir(gameFolder, 'steam_api.dll');
+  if (found32) return { path: found32, is64bit: false };
+
+  return null;
+}
+
+// Fetch achievements from Steam Web API
+async function fetchAchievements(appId, apiKey) {
+  return new Promise((resolve, reject) => {
+    const url = `http://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v0002/?key=${apiKey}&appid=${appId}&l=english&format=json`;
+
+    https.get(url, (response) => {
+      let data = '';
+      response.on('data', (chunk) => { data += chunk; });
+      response.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.game && parsed.game.availableGameStats) {
+            resolve(parsed.game.availableGameStats);
+          } else {
+            resolve({ achievements: [], stats: [] });
+          }
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }).on('error', reject);
+  });
+}
+
+// Download achievement image
+async function downloadImage(url, destPath) {
+  return new Promise((resolve, reject) => {
+    https.get(url, (response) => {
+      if (response.statusCode === 404) {
+        resolve(false); // Image not found, skip
+        return;
+      }
+
+      const file = fs.createWriteStream(destPath);
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close();
+        resolve(true);
+      });
+      file.on('error', (err) => {
+        fs.unlinkSync(destPath);
+        reject(err);
+      });
+    }).on('error', reject);
+  });
+}
+
+// Create steam_settings folder structure
+async function createSteamSettings(gameFolder, appId, goldbergOptions, achievementsData) {
+  const settingsFolder = path.join(gameFolder, 'steam_settings');
+  const imagesFolder = path.join(settingsFolder, 'images');
+
+  // Create directories
+  if (!fs.existsSync(settingsFolder)) {
+    fs.mkdirSync(settingsFolder, { recursive: true });
+  }
+  if (!fs.existsSync(imagesFolder)) {
+    fs.mkdirSync(imagesFolder, { recursive: true });
+  }
+
+  // Create steam_appid.txt
+  fs.writeFileSync(path.join(settingsFolder, 'steam_appid.txt'), appId.toString(), 'utf-8');
+
+  // Create configs.user.ini
+  const userIni = `[user::general]
+account_name=${goldbergOptions.username}
+account_steamid=${goldbergOptions.steamId}
+listen_port=${goldbergOptions.listenPort}
+`;
+  fs.writeFileSync(path.join(settingsFolder, 'configs.user.ini'), userIni, 'utf-8');
+
+  // Create configs.overlay.ini (overlay always on)
+  const overlayIni = `[overlay::general]
+enable_experimental_overlay=1
+`;
+  fs.writeFileSync(path.join(settingsFolder, 'configs.overlay.ini'), overlayIni, 'utf-8');
+
+  // Create configs.app.ini
+  const appIni = `[app::general]
+matchmaking_server_list_actual_type=1
+matchmaking_server_details_via_source_query=1
+`;
+  fs.writeFileSync(path.join(settingsFolder, 'configs.app.ini'), appIni, 'utf-8');
+
+  // Create steam_interfaces.txt (basic interfaces)
+  const interfaces = `SteamClient021
+SteamGameServer015
+SteamUser023
+SteamFriends017
+SteamUtils010
+SteamMatchMaking009
+SteamMatchMakingServers002
+STEAMUSERSTATS_INTERFACE_VERSION012
+STEAMAPPS_INTERFACE_VERSION008
+SteamNetworking006
+STEAMREMOTESTORAGE_INTERFACE_VERSION016
+STEAMSCREENSHOTS_INTERFACE_VERSION003
+STEAMHTTP_INTERFACE_VERSION003
+STEAMCONTROLLER_INTERFACE_VERSION008
+STEAMUGC_INTERFACE_VERSION018
+STEAMAPPLIST_INTERFACE_VERSION001
+STEAMMUSIC_INTERFACE_VERSION001
+STEAMMUSICREMOTE_INTERFACE_VERSION001
+STEAMHTMLSURFACE_INTERFACE_VERSION_005
+STEAMINVENTORY_INTERFACE_V003
+STEAMVIDEO_INTERFACE_V002
+STEAMPARENTALSETTINGS_INTERFACE_VERSION001
+STEAMGAMESERVERSTATS_INTERFACE_VERSION001
+SteamNetworkingSockets012
+SteamNetworkingUtils004
+`;
+  fs.writeFileSync(path.join(settingsFolder, 'steam_interfaces.txt'), interfaces, 'utf-8');
+
+  // Create achievements.json if achievements exist
+  if (achievementsData && achievementsData.achievements && achievementsData.achievements.length > 0) {
+    const achievementsJson = achievementsData.achievements.map(ach => ({
+      name: ach.name || '',
+      displayName: ach.displayName || ach.name || '',
+      description: ach.description || '',
+      hidden: ach.hidden || 0,
+      icon: ach.icon || '',
+      icongray: ach.icongray || ''
+    }));
+
+    fs.writeFileSync(
+      path.join(settingsFolder, 'achievements.json'),
+      JSON.stringify(achievementsJson, null, 2),
+      'utf-8'
+    );
+
+    // Download achievement images
+    console.log(`Downloading ${achievementsData.achievements.length} achievement images...`);
+    for (const ach of achievementsData.achievements) {
+      if (ach.icon) {
+        const iconName = path.basename(ach.icon);
+        const iconPath = path.join(imagesFolder, iconName);
+        try {
+          await downloadImage(ach.icon, iconPath);
+        } catch (err) {
+          console.warn(`Failed to download icon: ${ach.icon}`, err);
+        }
+      }
+      if (ach.icongray) {
+        const iconGrayName = path.basename(ach.icongray);
+        const iconGrayPath = path.join(imagesFolder, iconGrayName);
+        try {
+          await downloadImage(ach.icongray, iconGrayPath);
+        } catch (err) {
+          console.warn(`Failed to download icongray: ${ach.icongray}`, err);
+        }
+      }
+    }
+  }
+
+  return settingsFolder;
+}
+
+// Install Goldberg emulator
+async function installGoldberg(gameFolder, appId, goldbergOptions) {
+  // Detect which Steam API DLL the game uses
+  const steamApiInfo = detectSteamApiDll(gameFolder);
+  if (!steamApiInfo) {
+    throw new Error('Could not find steam_api.dll or steam_api64.dll in game folder');
+  }
+
+  console.log(`Found Steam API DLL: ${steamApiInfo.path} (${steamApiInfo.is64bit ? '64-bit' : '32-bit'})`);
+
+  // Fetch achievements from Steam Web API
+  let achievementsData = null;
+  try {
+    achievementsData = await fetchAchievements(appId, goldbergOptions.steamApiKey);
+    console.log(`Fetched ${achievementsData.achievements?.length || 0} achievements`);
+  } catch (error) {
+    console.warn('Failed to fetch achievements:', error);
+  }
+
+  // Create steam_settings folder
+  const steamApiDir = path.dirname(steamApiInfo.path);
+  await createSteamSettings(steamApiDir, appId, goldbergOptions, achievementsData);
+
+  // Backup original Steam API DLL
+  const backupPath = steamApiInfo.path + '.bak';
+  if (!fs.existsSync(backupPath)) {
+    fs.copyFileSync(steamApiInfo.path, backupPath);
+    console.log(`Backed up original Steam API DLL to: ${backupPath}`);
+  }
+
+  // Copy Goldberg DLL
+  const goldbergDllFolder = path.join(__dirname, 'goldberg_dlls');
+  const goldbergDllName = steamApiInfo.is64bit ? 'steam_api64.dll' : 'steam_api.dll';
+  const goldbergDllSource = path.join(goldbergDllFolder, goldbergDllName);
+
+  if (!fs.existsSync(goldbergDllSource)) {
+    throw new Error(`Goldberg DLL not found: ${goldbergDllSource}. Please add Goldberg DLLs to the goldberg_dlls folder.`);
+  }
+
+  fs.copyFileSync(goldbergDllSource, steamApiInfo.path);
+  console.log(`Installed Goldberg emulator DLL: ${goldbergDllName}`);
+
+  return {
+    steamApiPath: steamApiInfo.path,
+    is64bit: steamApiInfo.is64bit,
+    achievementsCount: achievementsData?.achievements?.length || 0
+  };
+}
+
 // Main IPC handler
-ipcMain.handle('install-globalfix', async (event, appId) => {
+ipcMain.handle('install-globalfix', async (event, appId, goldbergOptions) => {
   try {
     // Step 1: Find Steam installation
     const steamPath = findSteamPath();
@@ -447,13 +693,37 @@ ipcMain.handle('install-globalfix', async (event, appId) => {
     // Cleanup
     fs.unlinkSync(tempZipPath);
 
+    // Step 9: Install Goldberg if requested
+    let goldbergResult = null;
+    if (goldbergOptions) {
+      try {
+        console.log('Installing Goldberg emulator...');
+        goldbergResult = await installGoldberg(gameFolder, appId, goldbergOptions);
+        console.log('Goldberg installation complete!');
+      } catch (goldbergError) {
+        console.error('Goldberg installation error:', goldbergError);
+        // Don't fail the whole installation if Goldberg fails
+        return {
+          success: false,
+          error: `GlobalFix installed successfully, but Goldberg installation failed: ${goldbergError.message}`
+        };
+      }
+    }
+
     return {
       success: true,
       gameFolder: gameExeDir,
       gameExe: gameExeName,
       launchOptionsSet: null, // No longer needed
       launchOptionsPath: null,
-      launchOptionsError: null
+      launchOptionsError: null,
+      goldberg: goldbergResult ? {
+        installed: true,
+        steamApiPath: goldbergResult.steamApiPath,
+        is64bit: goldbergResult.is64bit,
+        achievementsCount: goldbergResult.achievementsCount,
+        listenPort: goldbergOptions.listenPort
+      } : null
     };
   } catch (error) {
     console.error('Installation error:', error);

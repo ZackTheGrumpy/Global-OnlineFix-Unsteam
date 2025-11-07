@@ -10,6 +10,14 @@ const resultSection = document.getElementById('result');
 const resultTitle = document.getElementById('resultTitle');
 const resultDetails = document.getElementById('resultDetails');
 
+// Goldberg options elements
+const goldbergCheckbox = document.getElementById('goldbergCheckbox');
+const goldbergOptions = document.getElementById('goldbergOptions');
+const steamApiKeyInput = document.getElementById('steamApiKey');
+const usernameInput = document.getElementById('username');
+const steamIdInput = document.getElementById('steamId');
+const listenPortInput = document.getElementById('listenPort');
+
 // Steam apps list
 let steamApps = [];
 let searchTimeout = null;
@@ -102,6 +110,15 @@ document.addEventListener('click', (e) => {
 // Game search input event listener
 gameSearchInput.addEventListener('input', handleGameSearch);
 
+// Goldberg checkbox toggle
+goldbergCheckbox.addEventListener('change', () => {
+  if (goldbergCheckbox.checked) {
+    goldbergOptions.classList.remove('hidden');
+  } else {
+    goldbergOptions.classList.add('hidden');
+  }
+});
+
 // Enable install button when AppID is entered
 appIdInput.addEventListener('input', () => {
   installBtn.disabled = appIdInput.value.trim() === '';
@@ -130,21 +147,41 @@ async function handleInstall() {
     return;
   }
 
+  // Check if Goldberg is enabled and validate
+  const goldbergEnabled = goldbergCheckbox.checked;
+  let goldbergOptions = null;
+
+  if (goldbergEnabled) {
+    const apiKey = steamApiKeyInput.value.trim();
+    if (!apiKey) {
+      showError('Steam Web API Key Required', 'Please enter your Steam Web API Key to use Goldberg emulator.');
+      return;
+    }
+
+    goldbergOptions = {
+      steamApiKey: apiKey,
+      username: usernameInput.value.trim() || 'Player',
+      steamId: steamIdInput.value.trim() || '76561198000000000',
+      listenPort: listenPortInput.value.trim() || '47584'
+    };
+  }
+
   // Disable input during installation
   appIdInput.disabled = true;
   installBtn.disabled = true;
+  goldbergCheckbox.disabled = true;
 
   // Show status
-  showStatus('Installing GlobalFix...');
+  showStatus(goldbergEnabled ? 'Installing GlobalFix and Goldberg Emulator...' : 'Installing GlobalFix...');
 
   try {
-    // Call the main process to install GlobalFix
-    const result = await window.electronAPI.installGlobalFix(appId);
+    // Call the main process to install GlobalFix (and optionally Goldberg)
+    const result = await window.electronAPI.installGlobalFix(appId, goldbergOptions);
 
     hideStatus();
 
     if (result.success) {
-      showSuccess(result);
+      showSuccess(result, goldbergEnabled);
     } else {
       showError('Installation Failed', result.error);
     }
@@ -155,6 +192,7 @@ async function handleInstall() {
     // Re-enable input
     appIdInput.disabled = false;
     installBtn.disabled = false;
+    goldbergCheckbox.disabled = false;
   }
 }
 
@@ -169,10 +207,30 @@ function hideStatus() {
   statusSection.classList.add('hidden');
 }
 
-function showSuccess(result) {
+function showSuccess(result, goldbergEnabled) {
   resultSection.classList.remove('hidden', 'error');
   resultSection.classList.add('success');
   resultTitle.textContent = '✓ Installation Successful!';
+
+  let nextSteps = '';
+  if (goldbergEnabled) {
+    nextSteps = `
+      <li>GlobalFix has been installed to your game folder</li>
+      <li>Goldberg emulator has been configured with achievements and LAN support</li>
+      <li>steam_settings folder has been created with all necessary files</li>
+      <li><strong>Simply launch your game from Steam normally</strong></li>
+      <li>For LAN play: Make sure all players use the same Listen Port (${escapeHtml(result.goldberg?.listenPort || '47584')})</li>
+      <li>Each player should have a unique Steam ID (increment the last digits)</li>
+    `;
+  } else {
+    nextSteps = `
+      <li>GlobalFix has been installed to your game folder</li>
+      <li>The unsteam.ini file has been configured with your game settings</li>
+      <li>The winmm.dll loader has been placed in the necessary locations</li>
+      <li><strong>Simply launch your game from Steam normally</strong></li>
+      <li>No launch options needed - the fix will load automatically!</li>
+    `;
+  }
 
   resultDetails.innerHTML = `
     <div class="result-details-item">
@@ -184,11 +242,7 @@ function showSuccess(result) {
     <div class="result-details-item" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
       <strong>Next Steps:</strong>
       <ol style="margin-left: 20px; margin-top: 10px; line-height: 1.6;">
-        <li>GlobalFix has been installed to your game folder</li>
-        <li>The unsteam.ini file has been configured with your game settings</li>
-        <li>The winmm.dll loader has been placed in the necessary locations</li>
-        <li><strong>Simply launch your game from Steam normally</strong></li>
-        <li>No launch options needed - the fix will load automatically!</li>
+        ${nextSteps}
       </ol>
     </div>
   `;
