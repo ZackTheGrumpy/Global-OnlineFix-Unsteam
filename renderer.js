@@ -13,17 +13,10 @@ const resultDetails = document.getElementById('resultDetails');
 // Goldberg options elements
 const goldbergCheckbox = document.getElementById('goldbergCheckbox');
 const goldbergOptions = document.getElementById('goldbergOptions');
-const steamApiKeyInput = document.getElementById('steamApiKey');
-const generateAchievementImagesCheckbox = document.getElementById('generateAchievementImages');
-const languageSelect = document.getElementById('language');
-const listenPortInput = document.getElementById('listenPort');
 const accountNameInput = document.getElementById('accountName');
 const steamIdInput = document.getElementById('steamId');
-const useCustomBroadcastIpCheckbox = document.getElementById('useCustomBroadcastIp');
-const customBroadcastIpInput = document.getElementById('customBroadcastIp');
-const disableNetworkingCheckbox = document.getElementById('disableNetworking');
-const offlineModeCheckbox = document.getElementById('offlineMode');
-const enableOverlayCheckbox = document.getElementById('enableOverlay');
+const languageSelect = document.getElementById('language');
+const steamApiKeyInput = document.getElementById('steamApiKey');
 
 // Steam apps list
 let steamApps = [];
@@ -126,15 +119,6 @@ goldbergCheckbox.addEventListener('change', () => {
   }
 });
 
-// Custom Broadcast IP checkbox toggle
-useCustomBroadcastIpCheckbox.addEventListener('change', () => {
-  if (useCustomBroadcastIpCheckbox.checked) {
-    customBroadcastIpInput.classList.remove('hidden');
-  } else {
-    customBroadcastIpInput.classList.add('hidden');
-  }
-});
-
 // Enable install button when AppID is entered
 appIdInput.addEventListener('input', () => {
   installBtn.disabled = appIdInput.value.trim() === '';
@@ -163,29 +147,16 @@ async function handleInstall() {
     return;
   }
 
-  // Check if Goldberg is enabled and validate
+  // Check if Goldberg is enabled
   const goldbergEnabled = goldbergCheckbox.checked;
   let goldbergOptions = null;
 
   if (goldbergEnabled) {
-    const apiKey = steamApiKeyInput.value.trim();
-    if (!apiKey) {
-      showError('Steam Web API Key Required', 'Please enter your Steam Web API Key to use Goldberg emulator.');
-      return;
-    }
-
     goldbergOptions = {
-      steamApiKey: apiKey,
-      generateAchievementImages: generateAchievementImagesCheckbox.checked,
-      language: languageSelect.value || 'english',
-      listenPort: parseInt(listenPortInput.value) || 47584,
       accountName: accountNameInput.value.trim() || 'Goldberg',
       steamId: steamIdInput.value.trim() || '76561197960287930',
-      useCustomBroadcastIp: useCustomBroadcastIpCheckbox.checked,
-      customBroadcastIp: customBroadcastIpInput.value.trim() || '127.0.0.1',
-      disableNetworking: disableNetworkingCheckbox.checked,
-      offlineMode: offlineModeCheckbox.checked,
-      enableOverlay: enableOverlayCheckbox.checked
+      language: languageSelect.value || 'english',
+      steamApiKey: steamApiKeyInput.value.trim() || null
     };
   }
 
