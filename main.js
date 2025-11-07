@@ -453,7 +453,6 @@ async function createSteamSettings(gameFolder, appId, goldbergOptions, achieveme
   const userIni = `[user::general]
 account_name=${goldbergOptions.username}
 account_steamid=${goldbergOptions.steamId}
-listen_port=${goldbergOptions.listenPort}
 `;
   fs.writeFileSync(path.join(settingsFolder, 'configs.user.ini'), userIni, 'utf-8');
 
@@ -573,22 +572,56 @@ async function installGoldberg(gameFolder, appId, goldbergOptions) {
     console.log(`Backed up original Steam API DLL to: ${backupPath}`);
   }
 
-  // Copy Goldberg DLL
+  // Copy Goldberg DLLs (steam_api, steamclient, GameOverlayRenderer)
   const goldbergDllFolder = path.join(__dirname, 'goldberg_dlls');
-  const goldbergDllName = steamApiInfo.is64bit ? 'steam_api64.dll' : 'steam_api.dll';
-  const goldbergDllSource = path.join(goldbergDllFolder, goldbergDllName);
+  const is64bit = steamApiInfo.is64bit;
 
-  if (!fs.existsSync(goldbergDllSource)) {
-    throw new Error(`Goldberg DLL not found: ${goldbergDllSource}. Please add Goldberg DLLs to the goldberg_dlls folder.`);
+  // List of required DLLs to copy
+  const requiredDlls = [
+    {
+      source: is64bit ? 'steam_api64.dll' : 'steam_api.dll',
+      dest: path.basename(steamApiInfo.path), // Use original name
+      required: true
+    },
+    {
+      source: is64bit ? 'steamclient64.dll' : 'steamclient.dll',
+      dest: is64bit ? 'steamclient64.dll' : 'steamclient.dll',
+      required: true
+    },
+    {
+      source: is64bit ? 'GameOverlayRenderer64.dll' : 'GameOverlayRenderer.dll',
+      dest: is64bit ? 'GameOverlayRenderer64.dll' : 'GameOverlayRenderer.dll',
+      required: true // Required for overlay to work
+    }
+  ];
+
+  // Copy each DLL
+  const installedDlls = [];
+  for (const dll of requiredDlls) {
+    const sourcePath = path.join(goldbergDllFolder, dll.source);
+    const destPath = path.join(steamApiDir, dll.dest);
+
+    if (!fs.existsSync(sourcePath)) {
+      if (dll.required) {
+        throw new Error(`Required Goldberg DLL not found: ${dll.source}. Please add all Goldberg DLLs to the goldberg_dlls folder. See goldberg_dlls/README.md for details.`);
+      } else {
+        console.warn(`Optional DLL not found, skipping: ${dll.source}`);
+        continue;
+      }
+    }
+
+    fs.copyFileSync(sourcePath, destPath);
+    installedDlls.push(dll.dest);
+    console.log(`Installed: ${dll.dest}`);
   }
 
-  fs.copyFileSync(goldbergDllSource, steamApiInfo.path);
-  console.log(`Installed Goldberg emulator DLL: ${goldbergDllName}`);
+  console.log(`Goldberg installation complete! Installed ${installedDlls.length} DLLs.`);
 
   return {
     steamApiPath: steamApiInfo.path,
     is64bit: steamApiInfo.is64bit,
-    achievementsCount: achievementsData?.achievements?.length || 0
+    achievementsCount: achievementsData?.achievements?.length || 0,
+    installedDlls: installedDlls
   };
 }
 
@@ -722,7 +755,7 @@ ipcMain.handle('install-globalfix', async (event, appId, goldbergOptions) => {
         steamApiPath: goldbergResult.steamApiPath,
         is64bit: goldbergResult.is64bit,
         achievementsCount: goldbergResult.achievementsCount,
-        listenPort: goldbergOptions.listenPort
+        installedDlls: goldbergResult.installedDlls
       } : null
     };
   } catch (error) {

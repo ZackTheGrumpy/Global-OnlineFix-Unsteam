@@ -16,7 +16,6 @@ const goldbergOptions = document.getElementById('goldbergOptions');
 const steamApiKeyInput = document.getElementById('steamApiKey');
 const usernameInput = document.getElementById('username');
 const steamIdInput = document.getElementById('steamId');
-const listenPortInput = document.getElementById('listenPort');
 
 // Steam apps list
 let steamApps = [];
@@ -161,8 +160,7 @@ async function handleInstall() {
     goldbergOptions = {
       steamApiKey: apiKey,
       username: usernameInput.value.trim() || 'Player',
-      steamId: steamIdInput.value.trim() || '76561198000000000',
-      listenPort: listenPortInput.value.trim() || '47584'
+      steamId: steamIdInput.value.trim() || '76561198000000000'
     };
   }
 
@@ -216,10 +214,10 @@ function showSuccess(result, goldbergEnabled) {
   if (goldbergEnabled) {
     nextSteps = `
       <li>GlobalFix has been installed to your game folder</li>
-      <li>Goldberg emulator has been configured with achievements and LAN support</li>
+      <li>Goldberg emulator has been configured with achievements and VLAN support</li>
       <li>steam_settings folder has been created with all necessary files</li>
       <li><strong>Simply launch your game from Steam normally</strong></li>
-      <li>For LAN play: Make sure all players use the same Listen Port (${escapeHtml(result.goldberg?.listenPort || '47584')})</li>
+      <li>For VLAN play: Connect to your Hamachi/ZeroTier network first</li>
       <li>Each player should have a unique Steam ID (increment the last digits)</li>
     `;
   } else {

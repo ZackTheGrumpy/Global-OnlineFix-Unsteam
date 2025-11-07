@@ -39,13 +39,13 @@
           <div class="checkbox-container">
             <input type="checkbox" id="goldbergCheckbox">
             <label for="goldbergCheckbox" class="checkbox-label">
-              Also install Goldberg Emulator (for LAN play)
+              Also install Goldberg Emulator (for VLAN play and achievements)
             </label>
           </div>
 
           <div id="goldbergOptions" class="goldberg-options hidden">
             <div class="goldberg-info">
-              <p>Goldberg enables LAN multiplayer and offline play. Configure your settings below:</p>
+              <p>Goldberg enables VLAN multiplayer (via Hamachi/ZeroTier), offline play, and achievement tracking. Configure your settings below:</p>
             </div>
 
             <label for="steamApiKey">Steam Web API Key: <span class="required">*</span></label>
@@ -74,17 +74,7 @@
               value="76561198000000000"
               autocomplete="off"
             >
-            <small class="input-help">Change the last digits for each player on LAN (e.g., increment by 1)</small>
-
-            <label for="listenPort">Listen Port:</label>
-            <input
-              type="text"
-              id="listenPort"
-              placeholder="Default: 47584"
-              value="47584"
-              autocomplete="off"
-            >
-            <small class="input-help">All players must use the same port for LAN play</small>
+            <small class="input-help">Change the last digits for each player on VLAN (e.g., increment by 1)</small>
           </div>
         </div>
 
