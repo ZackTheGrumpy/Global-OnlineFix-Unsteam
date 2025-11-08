@@ -107,6 +107,8 @@ function selectGame(appId, gameName) {
 
 // Fetch and display game info from PCGamingWiki
 async function fetchAndDisplayGameInfo(appId) {
+  console.log(`[Renderer] Fetching game info for AppID: ${appId}`);
+
   const gameInfoSection = document.getElementById('gameInfoSection');
   const gameInfoLoading = document.getElementById('gameInfoLoading');
   const gameInfoContent = document.getElementById('gameInfoContent');
@@ -119,16 +121,21 @@ async function fetchAndDisplayGameInfo(appId) {
   try {
     const result = await window.electronAPI.fetchPCGamingWikiInfo(appId);
 
+    console.log('[Renderer] Received result:', result);
+
     gameInfoLoading.classList.add('hidden');
 
     if (result.success) {
+      console.log('[Renderer] Success! Populating game info');
       populateGameInfo(result.data);
       gameInfoContent.classList.remove('hidden');
     } else {
+      console.log('[Renderer] Failed:', result.error);
       // Show "No info" state
       showNoGameInfo();
     }
   } catch (error) {
+    console.log('[Renderer] Error:', error);
     gameInfoLoading.classList.add('hidden');
     showNoGameInfo();
   }
@@ -335,10 +342,23 @@ goldbergCheckbox.addEventListener('change', () => {
 });
 
 // Enable buttons when AppID is entered
+let appIdTimeout = null;
 appIdInput.addEventListener('input', () => {
-  const hasAppId = appIdInput.value.trim() !== '';
+  const appId = appIdInput.value.trim();
+  const hasAppId = appId !== '';
   installBtn.disabled = !hasAppId;
   unfixBtn.disabled = !hasAppId;
+
+  // Debounce the game info fetch
+  if (appIdTimeout) {
+    clearTimeout(appIdTimeout);
+  }
+
+  if (hasAppId && /^\d+$/.test(appId)) {
+    appIdTimeout = setTimeout(() => {
+      fetchAndDisplayGameInfo(appId);
+    }, 500);
+  }
 });
 
 // Handle Enter key in input
