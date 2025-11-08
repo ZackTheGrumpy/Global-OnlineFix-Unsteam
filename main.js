@@ -730,9 +730,8 @@ function parseWikitext(wikitext) {
   };
 
   // Extract multiplayer data
-  const multiplayerMatch = wikitext.match(/{{Network\/Multiplayer([^}]+(?:}(?!})[^}]*)*)}}/s);
-  if (multiplayerMatch) {
-    const multiplayerText = multiplayerMatch[0];
+  const multiplayerText = extractTemplate(wikitext, 'Network/Multiplayer');
+  if (multiplayerText) {
     console.log('[PCGamingWiki] Raw multiplayer template:', multiplayerText.substring(0, 200));
 
     result.multiplayer.localPlay = extractField(multiplayerText, 'local play');
@@ -756,10 +755,8 @@ function parseWikitext(wikitext) {
   }
 
   // Extract connection data
-  const connectionsMatch = wikitext.match(/{{Network\/Connections([^}]+(?:}(?!})[^}]*)*)}}/s);
-  if (connectionsMatch) {
-    const connectionsText = connectionsMatch[0];
-
+  const connectionsText = extractTemplate(wikitext, 'Network/Connections');
+  if (connectionsText) {
     // Log the FULL connections template (split into chunks if needed)
     console.log('[PCGamingWiki] ========== FULL CONNECTIONS TEMPLATE START ==========');
     console.log(connectionsText);
@@ -786,9 +783,8 @@ function parseWikitext(wikitext) {
   }
 
   // Extract network ports
-  const portsMatch = wikitext.match(/{{Network\/Ports([^}]+(?:}(?!})[^}]*)*)}}/s);
-  if (portsMatch) {
-    const portsText = portsMatch[0];
+  const portsText = extractTemplate(wikitext, 'Network/Ports');
+  if (portsText) {
     console.log('[PCGamingWiki] Raw ports template:', portsText);
 
     result.ports.tcp = extractField(portsText, 'tcp');
@@ -799,34 +795,70 @@ function parseWikitext(wikitext) {
   return result;
 }
 
-// Extract field value from wikitext
-function extractField(text, fieldName) {
-  console.log(`[extractField v2.0] Extracting field: ${fieldName}`);
+// Extract a template with proper handling of nested braces
+function extractTemplate(wikitext, templateName) {
+  const searchPattern = `{{${templateName}`;
+  const startIndex = wikitext.indexOf(searchPattern);
 
-  // Strategy: First check if there's content on the same line as the = sign
-  // If yes, then capture everything (including subsequent lines) until the next field
-  // If no, the field is empty
-
-  // Try to match content on the same line as the = sign
-  const sameLineRegex = new RegExp(`\\|\\s*${fieldName}\\s*=\\s*([^\\n]+)`, 'i');
-  const sameLineMatch = text.match(sameLineRegex);
-
-  if (sameLineMatch && sameLineMatch[1] && sameLineMatch[1].trim()) {
-    // There's content on the same line
-    // Now check if it continues on subsequent lines (for multi-line values)
-    const multiLineRegex = new RegExp(`\\|\\s*${fieldName}\\s*=\\s*([\\s\\S]*?)(?=\\n\\s*\\||$)`, 'i');
-    const multiLineMatch = text.match(multiLineRegex);
-
-    if (multiLineMatch && multiLineMatch[1]) {
-      return multiLineMatch[1].trim();
-    }
-
-    // Fall back to same-line match
-    return sameLineMatch[1].trim();
+  if (startIndex === -1) {
+    return null;
   }
 
-  // No content on the same line = field is empty
-  return '';
+  // Start counting braces from the opening {{
+  let braceCount = 0;
+  let i = startIndex;
+
+  while (i < wikitext.length) {
+    if (wikitext[i] === '{' && wikitext[i + 1] === '{') {
+      braceCount++;
+      i += 2;
+    } else if (wikitext[i] === '}' && wikitext[i + 1] === '}') {
+      braceCount--;
+      i += 2;
+
+      if (braceCount === 0) {
+        // Found the closing braces
+        return wikitext.substring(startIndex, i);
+      }
+    } else {
+      i++;
+    }
+  }
+
+  return null;
+}
+
+// Extract field value from wikitext
+function extractField(text, fieldName) {
+  // Match the field and capture everything until the next field or end
+  // This regex looks for |fieldname = and captures content until the next | at the start of a line
+  const regex = new RegExp(`\\|\\s*${fieldName}\\s*=\\s*([^\\n]*)`, 'i');
+  const match = text.match(regex);
+
+  if (!match) {
+    return '';
+  }
+
+  const value = match[1].trim();
+
+  // If the value is empty, the field is empty
+  if (!value) {
+    return '';
+  }
+
+  // If the value exists, check if it continues on multiple lines
+  // Capture everything from the field until the next field (starts with |)
+  const multiLineRegex = new RegExp(
+    `\\|\\s*${fieldName}\\s*=\\s*([\\s\\S]*?)(?=\\n\\s*\\||\\n\\s*}}|$)`,
+    'i'
+  );
+  const multiLineMatch = text.match(multiLineRegex);
+
+  if (multiLineMatch && multiLineMatch[1]) {
+    return multiLineMatch[1].trim();
+  }
+
+  return value;
 }
 
 // IPC handler for fetching PCGamingWiki info
