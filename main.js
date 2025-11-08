@@ -725,13 +725,15 @@ async function fetchPCGamingWikiInfo(appId) {
 function parseWikitext(wikitext) {
   const result = {
     multiplayer: {},
-    connections: {}
+    connections: {},
+    ports: {}
   };
 
   // Extract multiplayer data
   const multiplayerMatch = wikitext.match(/{{Network\/Multiplayer([^}]+(?:}(?!})[^}]*)*)}}/s);
   if (multiplayerMatch) {
     const multiplayerText = multiplayerMatch[0];
+    console.log('[PCGamingWiki] Raw multiplayer template:', multiplayerText.substring(0, 200));
 
     result.multiplayer.localPlay = extractField(multiplayerText, 'local play');
     result.multiplayer.localPlayPlayers = extractField(multiplayerText, 'local play players');
@@ -757,6 +759,7 @@ function parseWikitext(wikitext) {
   const connectionsMatch = wikitext.match(/{{Network\/Connections([^}]+(?:}(?!})[^}]*)*)}}/s);
   if (connectionsMatch) {
     const connectionsText = connectionsMatch[0];
+    console.log('[PCGamingWiki] Raw connections template:', connectionsText);
 
     result.connections.matchmaking = extractField(connectionsText, 'matchmaking');
     result.connections.matchmakingNotes = extractField(connectionsText, 'matchmaking notes');
@@ -772,6 +775,21 @@ function parseWikitext(wikitext) {
 
     result.connections.directIp = extractField(connectionsText, 'direct ip');
     result.connections.directIpNotes = extractField(connectionsText, 'direct ip notes');
+
+    console.log('[PCGamingWiki] Extracted dedicated:', result.connections.dedicated);
+    console.log('[PCGamingWiki] Extracted selfHosting:', result.connections.selfHosting);
+    console.log('[PCGamingWiki] Extracted directIp:', result.connections.directIp);
+  }
+
+  // Extract network ports
+  const portsMatch = wikitext.match(/{{Network\/Ports([^}]+(?:}(?!})[^}]*)*)}}/s);
+  if (portsMatch) {
+    const portsText = portsMatch[0];
+    console.log('[PCGamingWiki] Raw ports template:', portsText);
+
+    result.ports.tcp = extractField(portsText, 'tcp');
+    result.ports.udp = extractField(portsText, 'udp');
+    result.ports.upnp = extractField(portsText, 'upnp');
   }
 
   return result;
