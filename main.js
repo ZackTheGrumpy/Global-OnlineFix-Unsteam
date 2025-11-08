@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
@@ -607,137 +607,125 @@ async function installGoldberg(gameFolder, appId, goldbergOptions) {
   };
 }
 
+// Helper function to make HTTP request using Electron's net module (bypasses Cloudflare)
+function makeElectronRequest(url) {
+  return new Promise((resolve, reject) => {
+    const request = net.request({
+      method: 'GET',
+      url: url,
+      redirect: 'manual' // Handle redirects manually
+    });
+
+    request.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    request.setHeader('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8');
+    request.setHeader('Accept-Language', 'en-US,en;q=0.9');
+
+    request.on('response', (response) => {
+      let data = '';
+
+      response.on('data', (chunk) => {
+        data += chunk.toString();
+      });
+
+      response.on('end', () => {
+        resolve({
+          statusCode: response.statusCode,
+          headers: response.headers,
+          data: data
+        });
+      });
+
+      response.on('error', (error) => {
+        reject(error);
+      });
+    });
+
+    request.on('error', (error) => {
+      reject(error);
+    });
+
+    request.end();
+  });
+}
+
 // Fetch game info from PCGamingWiki
 async function fetchPCGamingWikiInfo(appId) {
-  return new Promise((resolve) => {
+  try {
     console.log(`[PCGamingWiki] Fetching info for AppID: ${appId}`);
 
-    // Try to get page content via appid redirect
+    // Step 1: Get the redirect from appid.php
     const redirectUrl = `https://pcgamingwiki.com/api/appid.php?appid=${appId}`;
+    const firstResponse = await makeElectronRequest(redirectUrl);
 
-    const options = {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      },
-      rejectUnauthorized: false
-    };
+    console.log(`[PCGamingWiki] First response status: ${firstResponse.statusCode}`);
+    console.log(`[PCGamingWiki] First response location: ${firstResponse.headers.location}`);
 
-    https.get(redirectUrl, options, (response) => {
-      console.log(`[PCGamingWiki] First response status: ${response.statusCode}`);
-      console.log(`[PCGamingWiki] First response location: ${response.headers.location}`);
+    if (firstResponse.statusCode !== 302 && firstResponse.statusCode !== 301 && firstResponse.statusCode !== 308) {
+      console.log('[PCGamingWiki] ERROR: Unexpected status code');
+      return { success: false, error: `Game not found on PCGamingWiki (status: ${firstResponse.statusCode})` };
+    }
 
-      // Follow redirect to get actual page (handle both 302 and 308)
-      if (response.statusCode === 302 || response.statusCode === 301 || response.statusCode === 308) {
-        const location = response.headers.location;
+    let location = firstResponse.headers.location;
+    if (Array.isArray(location)) location = location[0]; // Handle array of redirect URLs
 
-        // If it's a redirect to www, follow it first
-        if (location && location.includes('www.pcgamingwiki.com/api/appid.php')) {
-          console.log(`[PCGamingWiki] Following www redirect: ${location}`);
+    // Step 2: If redirected to www subdomain, follow it
+    if (location && location.includes('www.pcgamingwiki.com/api/appid.php')) {
+      console.log(`[PCGamingWiki] Following www redirect: ${location}`);
 
-          https.get(location, options, (wwwResponse) => {
-            console.log(`[PCGamingWiki] Second response status: ${wwwResponse.statusCode}`);
-            console.log(`[PCGamingWiki] Second response location: ${wwwResponse.headers.location}`);
+      const secondResponse = await makeElectronRequest(location);
 
-            if (wwwResponse.statusCode === 302 || wwwResponse.statusCode === 301) {
-              const finalLocation = wwwResponse.headers.location;
-              const pageName = finalLocation ? finalLocation.split('/wiki/')[1] : null;
+      console.log(`[PCGamingWiki] Second response status: ${secondResponse.statusCode}`);
+      console.log(`[PCGamingWiki] Second response location: ${secondResponse.headers.location}`);
 
-              console.log(`[PCGamingWiki] Extracted page name: ${pageName}`);
-
-              if (!pageName) {
-                console.log('[PCGamingWiki] ERROR: Could not extract page name');
-                resolve({ success: false, error: 'Game not found on PCGamingWiki' });
-                return;
-              }
-
-              // Now fetch the wikitext for this page
-              const wikitextUrl = `https://www.pcgamingwiki.com/w/api.php?action=parse&page=${pageName}&prop=wikitext&format=json`;
-              console.log(`[PCGamingWiki] Fetching wikitext from: ${wikitextUrl}`);
-
-              https.get(wikitextUrl, options, (wikitextResponse) => {
-                let data = '';
-                wikitextResponse.on('data', (chunk) => { data += chunk; });
-                wikitextResponse.on('end', () => {
-                  try {
-                    const parsed = JSON.parse(data);
-                    if (parsed.parse && parsed.parse.wikitext) {
-                      const wikitext = parsed.parse.wikitext['*'];
-                      console.log('[PCGamingWiki] Successfully fetched and parsed wikitext');
-                      const gameInfo = parseWikitext(wikitext);
-                      console.log('[PCGamingWiki] Parsed game info:', JSON.stringify(gameInfo, null, 2));
-                      resolve({ success: true, data: gameInfo });
-                    } else {
-                      console.log('[PCGamingWiki] ERROR: No wikitext in response');
-                      resolve({ success: false, error: 'No wikitext found' });
-                    }
-                  } catch (error) {
-                    console.log('[PCGamingWiki] ERROR: Failed to parse JSON:', error);
-                    resolve({ success: false, error: 'Failed to parse response' });
-                  }
-                });
-              }).on('error', (err) => {
-                console.log('[PCGamingWiki] ERROR: Network error fetching wikitext:', err);
-                resolve({ success: false, error: 'Network error' });
-              });
-            } else {
-              console.log('[PCGamingWiki] ERROR: Unexpected second redirect status');
-              resolve({ success: false, error: 'Unexpected redirect response' });
-            }
-          }).on('error', (err) => {
-            console.log('[PCGamingWiki] ERROR: Network error on www redirect:', err);
-            resolve({ success: false, error: 'Network error' });
-          });
-        } else {
-          // Direct redirect to wiki page
-          const pageName = location ? location.split('/wiki/')[1] : null;
-
-          console.log(`[PCGamingWiki] Direct redirect, extracted page name: ${pageName}`);
-
-          if (!pageName) {
-            console.log('[PCGamingWiki] ERROR: Could not extract page name from direct redirect');
-            resolve({ success: false, error: 'Game not found on PCGamingWiki' });
-            return;
-          }
-
-          // Now fetch the wikitext for this page
-          const wikitextUrl = `https://www.pcgamingwiki.com/w/api.php?action=parse&page=${pageName}&prop=wikitext&format=json`;
-          console.log(`[PCGamingWiki] Fetching wikitext from: ${wikitextUrl}`);
-
-          https.get(wikitextUrl, options, (wikitextResponse) => {
-            let data = '';
-            wikitextResponse.on('data', (chunk) => { data += chunk; });
-            wikitextResponse.on('end', () => {
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.parse && parsed.parse.wikitext) {
-                  const wikitext = parsed.parse.wikitext['*'];
-                  console.log('[PCGamingWiki] Successfully fetched and parsed wikitext');
-                  const gameInfo = parseWikitext(wikitext);
-                  console.log('[PCGamingWiki] Parsed game info:', JSON.stringify(gameInfo, null, 2));
-                  resolve({ success: true, data: gameInfo });
-                } else {
-                  console.log('[PCGamingWiki] ERROR: No wikitext in response');
-                  resolve({ success: false, error: 'No wikitext found' });
-                }
-              } catch (error) {
-                console.log('[PCGamingWiki] ERROR: Failed to parse JSON:', error);
-                resolve({ success: false, error: 'Failed to parse response' });
-              }
-            });
-          }).on('error', (err) => {
-            console.log('[PCGamingWiki] ERROR: Network error fetching wikitext:', err);
-            resolve({ success: false, error: 'Network error' });
-          });
-        }
-      } else {
-        console.log('[PCGamingWiki] ERROR: Unexpected status code');
-        resolve({ success: false, error: `Game not found on PCGamingWiki (status: ${response.statusCode})` });
+      if (secondResponse.statusCode !== 302 && secondResponse.statusCode !== 301) {
+        console.log('[PCGamingWiki] ERROR: Unexpected second redirect status');
+        return { success: false, error: 'Unexpected redirect response' };
       }
-    }).on('error', (err) => {
-      console.log('[PCGamingWiki] ERROR: Network error on first request:', err);
-      resolve({ success: false, error: 'Network error' });
-    });
-  });
+
+      location = secondResponse.headers.location;
+      if (Array.isArray(location)) location = location[0];
+    }
+
+    // Step 3: Extract page name from final redirect
+    const pageName = location ? location.split('/wiki/')[1] : null;
+
+    console.log(`[PCGamingWiki] Extracted page name: ${pageName}`);
+
+    if (!pageName) {
+      console.log('[PCGamingWiki] ERROR: Could not extract page name');
+      return { success: false, error: 'Game not found on PCGamingWiki' };
+    }
+
+    // Step 4: Fetch wikitext for the page
+    const wikitextUrl = `https://www.pcgamingwiki.com/w/api.php?action=parse&page=${pageName}&prop=wikitext&format=json`;
+    console.log(`[PCGamingWiki] Fetching wikitext from: ${wikitextUrl}`);
+
+    const wikitextResponse = await makeElectronRequest(wikitextUrl);
+
+    if (wikitextResponse.statusCode !== 200) {
+      console.log('[PCGamingWiki] ERROR: Failed to fetch wikitext');
+      return { success: false, error: 'Failed to fetch wikitext' };
+    }
+
+    const parsed = JSON.parse(wikitextResponse.data);
+
+    if (parsed.parse && parsed.parse.wikitext) {
+      const wikitext = parsed.parse.wikitext['*'];
+      console.log('[PCGamingWiki] Successfully fetched and parsed wikitext');
+
+      const gameInfo = parseWikitext(wikitext);
+      console.log('[PCGamingWiki] Parsed game info:', JSON.stringify(gameInfo, null, 2));
+
+      return { success: true, data: gameInfo };
+    } else {
+      console.log('[PCGamingWiki] ERROR: No wikitext in response');
+      return { success: false, error: 'No wikitext found' };
+    }
+
+  } catch (error) {
+    console.log('[PCGamingWiki] ERROR:', error);
+    return { success: false, error: error.message || 'Network error' };
+  }
 }
 
 // Parse wikitext to extract multiplayer and connection data
