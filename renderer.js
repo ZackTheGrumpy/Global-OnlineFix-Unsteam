@@ -237,6 +237,29 @@ function populateGameInfo(data) {
     connectionTableBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">No info</td></tr>';
   }
 
+  // Populate network ports table
+  const portsTableContainer = document.getElementById('portsTableContainer');
+  const portsTableBody = document.getElementById('portsTableBody');
+
+  if (data.ports && (data.ports.tcp || data.ports.udp || data.ports.upnp)) {
+    const portsRows = [];
+
+    if (data.ports.tcp) {
+      portsRows.push(`<tr><td>TCP</td><td>${escapeHtml(cleanWikitext(data.ports.tcp))}</td></tr>`);
+    }
+    if (data.ports.udp) {
+      portsRows.push(`<tr><td>UDP</td><td>${escapeHtml(cleanWikitext(data.ports.udp))}</td></tr>`);
+    }
+    if (data.ports.upnp) {
+      portsRows.push(`<tr><td>UPnP</td><td>${escapeHtml(cleanWikitext(data.ports.upnp))}</td></tr>`);
+    }
+
+    portsTableBody.innerHTML = portsRows.join('');
+    portsTableContainer.classList.remove('hidden');
+  } else {
+    portsTableContainer.classList.add('hidden');
+  }
+
   // Generate recommendations
   generateRecommendations(data, gameRecommendations);
 }

@@ -797,11 +797,29 @@ function parseWikitext(wikitext) {
 
 // Extract field value from wikitext
 function extractField(text, fieldName) {
-  const regex = new RegExp(`\\|\\s*${fieldName}\\s*=\\s*([^|\\n]+)`, 'i');
-  const match = text.match(regex);
-  if (match && match[1]) {
+  // Try multiple patterns to handle different wikitext formats
+
+  // Pattern 1: Standard single-line field
+  let regex = new RegExp(`\\|\\s*${fieldName}\\s*=\\s*([^|\\n]+)`, 'i');
+  let match = text.match(regex);
+  if (match && match[1] && match[1].trim() !== '') {
     return match[1].trim();
   }
+
+  // Pattern 2: Multi-line field (capture until next | or end)
+  regex = new RegExp(`\\|\\s*${fieldName}\\s*=\\s*([^|]+?)(?=\\||$)`, 'is');
+  match = text.match(regex);
+  if (match && match[1] && match[1].trim() !== '') {
+    return match[1].trim();
+  }
+
+  // Pattern 3: Field with nested templates
+  regex = new RegExp(`\\|\\s*${fieldName}\\s*=\\s*(.+?)(?=\\n\\s*\\||$)`, 'is');
+  match = text.match(regex);
+  if (match && match[1] && match[1].trim() !== '') {
+    return match[1].trim();
+  }
+
   return '';
 }
 
