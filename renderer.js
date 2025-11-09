@@ -621,6 +621,25 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
   resultSection.classList.add('success');
   resultTitle.textContent = '✓ Fix Applied Successfully!';
 
+  // Add prominent Steam restart warning if needed
+  let steamRestartBanner = '';
+  if (result.steamNeedsRestart) {
+    steamRestartBanner = `
+      <div style="background: #ff5722; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: bold; font-size: 1.1em; animation: pulse 2s infinite;">
+        ⚠️ STEAM WAS CLOSED - PLEASE RESTART STEAM NOW! ⚠️
+        <div style="font-size: 0.9em; margin-top: 8px; font-weight: normal;">
+          The launch options have been applied. Start Steam to use them.
+        </div>
+      </div>
+      <style>
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.8; }
+        }
+      </style>
+    `;
+  }
+
   // Build component list
   const components = [];
   if (steamlessEnabled && result.steamless) components.push('Steamless DRM removal');
@@ -656,7 +675,11 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
     }
   }
 
-  if (unsteamEnabled || goldbergEnabled) {
+  // Show Steam restart warning based on whether we closed Steam
+  if (result.steamNeedsRestart) {
+    nextSteps += '<li><strong style="color: #e74c3c; font-size: 1.1em;">⚠️ CRITICAL: Steam was closed to apply launch options - Please restart Steam now!</strong></li>';
+    nextSteps += '<li>After restarting Steam, launch your game normally</li>';
+  } else if (unsteamEnabled || goldbergEnabled) {
     nextSteps += '<li><strong style="color: #e74c3c;">⚠️ IMPORTANT: Close Steam completely and reopen it</strong></li>';
     nextSteps += '<li>After restarting Steam, launch your game normally</li>';
   }
@@ -713,6 +736,7 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
   }
 
   resultDetails.innerHTML = `
+    ${steamRestartBanner}
     <div class="result-details-item">
       <strong>Game Folder:</strong> ${escapeHtml(result.gameFolder)}
     </div>

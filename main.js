@@ -485,6 +485,45 @@ function deleteFixState(gameFolder) {
 }
 
 // Modify Steam launch options
+// Helper function to close Steam and wait for it to fully exit
+async function closeSteamAndWait() {
+  const { execSync } = require('child_process');
+
+  try {
+    // Check if Steam is running
+    const tasklistOutput = execSync('tasklist /FI "IMAGENAME eq steam.exe" /NH', { encoding: 'utf-8' });
+    if (!tasklistOutput.toLowerCase().includes('steam.exe')) {
+      return false; // Steam is not running
+    }
+
+    logToRenderer('🔄 Closing Steam to apply configuration changes...');
+
+    // Close Steam gracefully
+    execSync('taskkill /IM steam.exe', { encoding: 'utf-8' });
+
+    // Wait for Steam to fully close (check every 500ms, max 10 seconds)
+    let attempts = 0;
+    const maxAttempts = 20;
+
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const checkOutput = execSync('tasklist /FI "IMAGENAME eq steam.exe" /NH', { encoding: 'utf-8' });
+      if (!checkOutput.toLowerCase().includes('steam.exe')) {
+        logToRenderer('✓ Steam closed successfully');
+        return true; // We closed Steam
+      }
+      attempts++;
+    }
+
+    logToRenderer('⚠️ Steam did not close within 10 seconds');
+    return true; // We tried to close it
+  } catch (e) {
+    logErrorToRenderer('Error while closing Steam:', e.message);
+    return false;
+  }
+}
+
 async function modifySteamLaunchOptions(appId, loaderPath) {
   logToRenderer('\n╔══════════════════════════════════════════════════════════╗');
   logToRenderer('║  INSIDE modifySteamLaunchOptions FUNCTION               ║');
@@ -503,20 +542,15 @@ async function modifySteamLaunchOptions(appId, loaderPath) {
       throw new Error('Steam installation not found. Please ensure Steam is installed. If Steam is installed in a custom location, the app may not be able to find it automatically.');
     }
 
-    // Check if Steam is running
-    logToRenderer('\n=== Checking if Steam is running ===');
-    try {
-      const { execSync } = require('child_process');
-      const tasklistOutput = execSync('tasklist /FI "IMAGENAME eq steam.exe" /NH', { encoding: 'utf-8' });
-      if (tasklistOutput.toLowerCase().includes('steam.exe')) {
-        logToRenderer('⚠️ WARNING: Steam is currently running!');
-        logToRenderer('Steam may overwrite the config file after we modify it.');
-        logToRenderer('It is recommended to close Steam before applying fixes.\n');
-      } else {
-        logToRenderer('✓ Steam is not running');
-      }
-    } catch (e) {
-      logToRenderer('Could not check if Steam is running:', e.message);
+    // Close Steam if it's running
+    logToRenderer('\n=== Step 2: Ensuring Steam is closed ===');
+    const steamWasClosed = await closeSteamAndWait();
+    const needsSteamRestart = steamWasClosed;
+
+    if (steamWasClosed) {
+      logToRenderer('✓ Steam has been closed to prevent config overwrites\n');
+    } else {
+      logToRenderer('✓ Steam was not running\n');
     }
 
     const userDataPath = path.join(steamPath, 'userdata');
@@ -645,7 +679,11 @@ async function modifySteamLaunchOptions(appId, loaderPath) {
       logToRenderer(`✓ Launch options successfully updated for ${modifiedCount} Steam users: ${modifiedUsers.join(', ')}`);
     }
 
-    return { success: true, modifiedCount, modifiedUsers };
+    if (needsSteamRestart) {
+      logToRenderer('\n⚠️ IMPORTANT: Please restart Steam for the changes to take effect!');
+    }
+
+    return { success: true, modifiedCount, modifiedUsers, needsSteamRestart };
   } catch (error) {
     logErrorToRenderer('Error modifying launch options:', error);
     throw error; // Re-throw to preserve the error message
@@ -1578,9 +1616,11 @@ ipcMain.handle('install-globalfix', async (event, options) => {
       logToRenderer('Loader Path:', loaderPath);
       logToRenderer('About to call modifySteamLaunchOptions...\n');
 
+      let steamNeedsRestart = false;
       try {
         const result = await modifySteamLaunchOptions(appId, loaderPath);
         launchOptionsSet = true;
+        steamNeedsRestart = result.needsSteamRestart || false;
         logToRenderer(`\n✅ Steam launch options updated successfully for ${result.modifiedCount} user(s)`);
       } catch (error) {
         launchOptionsError = error.message;
@@ -1630,6 +1670,7 @@ ipcMain.handle('install-globalfix', async (event, options) => {
       } : null,
       launchOptionsSet: launchOptionsSet,
       launchOptionsError: launchOptionsError,
+      steamNeedsRestart: steamNeedsRestart,
       goldberg: goldbergResult ? {
         installed: true,
         steamApiPath: goldbergResult.steamApiPath,
