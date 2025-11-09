@@ -465,6 +465,22 @@ async function modifySteamLaunchOptions(appId, loaderPath) {
       throw new Error('Steam installation not found. Please ensure Steam is installed. If Steam is installed in a custom location, the app may not be able to find it automatically.');
     }
 
+    // Check if Steam is running
+    console.log('\n=== Checking if Steam is running ===');
+    try {
+      const { execSync } = require('child_process');
+      const tasklistOutput = execSync('tasklist /FI "IMAGENAME eq steam.exe" /NH', { encoding: 'utf-8' });
+      if (tasklistOutput.toLowerCase().includes('steam.exe')) {
+        console.log('⚠️ WARNING: Steam is currently running!');
+        console.log('Steam may overwrite the config file after we modify it.');
+        console.log('It is recommended to close Steam before applying fixes.\n');
+      } else {
+        console.log('✓ Steam is not running');
+      }
+    } catch (e) {
+      console.log('Could not check if Steam is running:', e.message);
+    }
+
     const userDataPath = path.join(steamPath, 'userdata');
 
     if (!fs.existsSync(userDataPath)) {
@@ -485,45 +501,94 @@ async function modifySteamLaunchOptions(appId, loaderPath) {
     for (const user of users) {
       const configPath = path.join(userDataPath, user, 'config', 'localconfig.vdf');
 
+      console.log(`\n=== Checking Steam user ${user} ===`);
+      console.log(`Config path: ${configPath}`);
+
       if (fs.existsSync(configPath)) {
+        console.log(`✓ Config file exists`);
         let content = fs.readFileSync(configPath, 'utf-8');
 
         // Escape backslashes for the launch options path
         const launchOptions = `\\"${loaderPath.replace(/\\/g, '\\\\')}\\" %command%`;
+        console.log(`Launch options to set: ${launchOptions}`);
 
         // Check if app ID exists in this config
+        console.log(`Looking for AppID "${appId}" in config...`);
         if (content.includes(`"${appId}"`)) {
+          console.log(`✓ AppID "${appId}" found in config file`);
           foundAppId = true;
+
+          // Extract the section around the AppID for debugging
+          const appIdIndex = content.indexOf(`"${appId}"`);
+          const sampleText = content.substring(Math.max(0, appIdIndex - 50), Math.min(content.length, appIdIndex + 200));
+          console.log(`Context around AppID:\n${sampleText}\n`);
+
           // Find the app section - look for the pattern: "appid"\n\t\t\t{
           const appSectionRegex = new RegExp(`("${appId}"\\s*\\n\\s*\\{)`, 'g');
 
           if (appSectionRegex.test(content)) {
+            console.log(`✓ App section pattern matched`);
+
             // Check if LaunchOptions already exists for this app
             const launchOptionsPattern = new RegExp(
               `"${appId}"\\s*\\n\\s*\\{[^}]*"LaunchOptions"\\s*"[^"]*"`,
               's'
             );
 
+            // Create a backup before modifying
+            const backupPath = configPath + '.backup';
+            fs.writeFileSync(backupPath, content, 'utf-8');
+            console.log(`Created backup at: ${backupPath}`);
+
             if (launchOptionsPattern.test(content)) {
+              console.log(`Updating existing LaunchOptions...`);
               // Update existing LaunchOptions
-              content = content.replace(
-                new RegExp(`("${appId}"\\s*\\n\\s*\\{[^}]*"LaunchOptions"\\s*")([^"]*)(")`,'s'),
-                `$1${launchOptions}$3`
-              );
+              const replaceRegex = new RegExp(`("${appId}"\\s*\\n\\s*\\{[^}]*"LaunchOptions"\\s*")([^"]*)(")`,'s');
+              const oldContent = content;
+              content = content.replace(replaceRegex, `$1${launchOptions}$3`);
+
+              if (content !== oldContent) {
+                console.log(`✓ Content was modified`);
+              } else {
+                console.log(`⚠️ WARNING: Replace didn't change anything!`);
+              }
             } else {
+              console.log(`Adding new LaunchOptions entry...`);
               // Add new LaunchOptions after the opening brace of the app section
-              content = content.replace(
-                new RegExp(`("${appId}"\\s*\\n\\s*\\{)`,''),
-                `$1\n\t\t\t\t"LaunchOptions"\t\t"${launchOptions}"`
-              );
+              const addRegex = new RegExp(`("${appId}"\\s*\\n\\s*\\{)`,'');
+              const oldContent = content;
+              content = content.replace(addRegex, `$1\n\t\t\t\t"LaunchOptions"\t\t"${launchOptions}"`);
+
+              if (content !== oldContent) {
+                console.log(`✓ LaunchOptions entry added`);
+              } else {
+                console.log(`⚠️ WARNING: Add didn't change anything!`);
+              }
             }
 
             fs.writeFileSync(configPath, content, 'utf-8');
+            console.log(`✓ Config file written successfully`);
+
+            // Verify the write
+            const verifyContent = fs.readFileSync(configPath, 'utf-8');
+            if (verifyContent.includes(launchOptions)) {
+              console.log(`✓ VERIFIED: Launch options are in the file`);
+            } else {
+              console.log(`✗ ERROR: Launch options NOT found after writing!`);
+            }
+
             modifiedCount++;
             modifiedUsers.push(user);
             console.log(`✓ Launch options set for AppID ${appId} in Steam user ${user}`);
+          } else {
+            console.log(`✗ App section regex did NOT match`);
+            console.log(`Regex pattern: ("${appId}"\\s*\\n\\s*\\{)`);
           }
+        } else {
+          console.log(`✗ AppID "${appId}" NOT found in config file`);
         }
+      } else {
+        console.log(`✗ Config file does not exist`);
       }
     }
 
