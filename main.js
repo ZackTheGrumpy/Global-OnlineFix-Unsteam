@@ -355,8 +355,10 @@ async function removeSteamLaunchOptions(appId) {
     const userDataPath = path.join(steamPath, 'userdata');
     const users = fs.readdirSync(userDataPath);
 
-    let modified = false;
+    let modifiedCount = 0;
+    const modifiedUsers = [];
 
+    // Loop through ALL users and clear launch options for each one that has this game
     for (const user of users) {
       const configPath = path.join(userDataPath, user, 'config', 'localconfig.vdf');
 
@@ -380,14 +382,26 @@ async function removeSteamLaunchOptions(appId) {
             );
 
             fs.writeFileSync(configPath, content, 'utf-8');
-            modified = true;
-            console.log(`Launch options cleared for AppID ${appId} in user ${user}`);
+            modifiedCount++;
+            modifiedUsers.push(user);
+            console.log(`✓ Launch options cleared for AppID ${appId} in Steam user ${user}`);
           }
         }
       }
     }
 
-    return modified;
+    // Log summary
+    if (modifiedCount > 0) {
+      if (modifiedCount === 1) {
+        console.log(`✓ Launch options successfully cleared for 1 Steam user`);
+      } else {
+        console.log(`✓ Launch options successfully cleared for ${modifiedCount} Steam users: ${modifiedUsers.join(', ')}`);
+      }
+    } else {
+      console.log(`No launch options found to clear for AppID ${appId}`);
+    }
+
+    return modifiedCount > 0;
   } catch (error) {
     console.error('Error removing launch options:', error);
     return false;
@@ -463,9 +477,11 @@ async function modifySteamLaunchOptions(appId, loaderPath) {
       throw new Error('No Steam users found. Please ensure you have logged into Steam at least once.');
     }
 
-    let modified = false;
+    let modifiedCount = 0;
     let foundAppId = false;
+    const modifiedUsers = [];
 
+    // Loop through ALL users and modify launch options for each one that has this game
     for (const user of users) {
       const configPath = path.join(userDataPath, user, 'config', 'localconfig.vdf');
 
@@ -503,14 +519,15 @@ async function modifySteamLaunchOptions(appId, loaderPath) {
             }
 
             fs.writeFileSync(configPath, content, 'utf-8');
-            modified = true;
-            console.log(`Launch options set for AppID ${appId} in user ${user}`);
+            modifiedCount++;
+            modifiedUsers.push(user);
+            console.log(`✓ Launch options set for AppID ${appId} in Steam user ${user}`);
           }
         }
       }
     }
 
-    if (!modified) {
+    if (modifiedCount === 0) {
       if (!foundAppId) {
         throw new Error(`Game (AppID ${appId}) has not been launched in Steam yet. Please launch the game at least once, close it, then try applying the fix again. This creates the necessary Steam configuration entry.`);
       } else {
@@ -518,7 +535,14 @@ async function modifySteamLaunchOptions(appId, loaderPath) {
       }
     }
 
-    return true;
+    // Log summary
+    if (modifiedCount === 1) {
+      console.log(`✓ Launch options successfully updated for 1 Steam user`);
+    } else {
+      console.log(`✓ Launch options successfully updated for ${modifiedCount} Steam users: ${modifiedUsers.join(', ')}`);
+    }
+
+    return { success: true, modifiedCount, modifiedUsers };
   } catch (error) {
     console.error('Error modifying launch options:', error);
     throw error; // Re-throw to preserve the error message
@@ -1442,9 +1466,9 @@ ipcMain.handle('install-globalfix', async (event, options) => {
       const loaderPath = path.join(gameExeDir, 'unsteam_loader64.exe');
 
       try {
-        await modifySteamLaunchOptions(appId, loaderPath);
+        const result = await modifySteamLaunchOptions(appId, loaderPath);
         launchOptionsSet = true;
-        console.log('Steam launch options updated successfully');
+        console.log(`Steam launch options updated successfully for ${result.modifiedCount} user(s)`);
       } catch (error) {
         launchOptionsError = error.message;
         console.error('Failed to modify Steam launch options:', error);
