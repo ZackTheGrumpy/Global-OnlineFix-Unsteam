@@ -491,8 +491,10 @@ async function handleInstall() {
     showError('Installation Error', error.message || 'An unexpected error occurred.');
   } finally {
     // Re-enable input
+    gameSearchInput.disabled = false;
     appIdInput.disabled = false;
     installBtn.disabled = false;
+    unfixBtn.disabled = false;
     goldbergCheckbox.disabled = false;
   }
 }
@@ -612,6 +614,7 @@ async function handleUnfix() {
     showError('Unfix Error', error.message || 'An unexpected error occurred.');
   } finally {
     // Re-enable input
+    gameSearchInput.disabled = false;
     appIdInput.disabled = false;
     installBtn.disabled = false;
     unfixBtn.disabled = false;

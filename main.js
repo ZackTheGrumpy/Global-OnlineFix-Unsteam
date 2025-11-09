@@ -918,27 +918,35 @@ function extractField(text, fieldName) {
   // Escape special regex characters in fieldName
   const escapedFieldName = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-  // Strategy: Capture everything from |fieldname = until the next field or end of template
-  // Lookahead for: newline followed by | (next field) OR }} (end of template)
-  const regex = new RegExp(
-    `\\|\\s*${escapedFieldName}\\s*=\\s*([\\s\\S]*?)(?=\\n\\s*\\||}}$)`,
-    'i'
+  // First, find the field line
+  const fieldLineRegex = new RegExp(`^\\|\\s*${escapedFieldName}\\s*=(.*)$`, 'im');
+  const lineMatch = text.match(fieldLineRegex);
+
+  if (!lineMatch) {
+    return ''; // Field not found
+  }
+
+  const valueOnSameLine = lineMatch[1].trim();
+
+  // If there's no value on the same line, field is empty
+  if (!valueOnSameLine) {
+    return '';
+  }
+
+  // There's a value on the same line. Check if it continues on next lines.
+  // Capture from |fieldname = until the next | at start of line or }}
+  const multiLineRegex = new RegExp(
+    `\\|\\s*${escapedFieldName}\\s*=\\s*([\\s\\S]*?)(?=^\\s*\\||^\\s*}}|$)`,
+    'im'
   );
+  const multiMatch = text.match(multiLineRegex);
 
-  const match = text.match(regex);
-
-  if (!match || !match[1]) {
-    return '';
+  if (multiMatch && multiMatch[1]) {
+    return multiMatch[1].trim();
   }
 
-  const value = match[1].trim();
-
-  // Check if the value is JUST whitespace/newlines - means field is empty
-  if (!value || value.length === 0) {
-    return '';
-  }
-
-  return value;
+  // Fall back to single-line value
+  return valueOnSameLine;
 }
 
 // IPC handler for fetching PCGamingWiki info
