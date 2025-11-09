@@ -1388,82 +1388,86 @@ function findFiles(dir, pattern) {
   return results;
 }
 
-// Unfix game - remove all GlobalFix and Goldberg modifications
-async function unfixGame(gameFolder) {
+// Unfix game - remove selected GlobalFix and Goldberg modifications
+async function unfixGame(gameFolder, removeGoldberg = true, removeUnsteam = true) {
   const removedItems = [];
   const errors = [];
 
-  // 1. Restore steam_api.dll.bak or steam_api64.dll.bak
-  const bakFiles = findFiles(gameFolder, 'steam_api.dll.bak').concat(
-    findFiles(gameFolder, 'steam_api64.dll.bak')
-  );
+  // 1. Restore steam_api.dll.bak or steam_api64.dll.bak (Goldberg)
+  if (removeGoldberg) {
+    const bakFiles = findFiles(gameFolder, 'steam_api.dll.bak').concat(
+      findFiles(gameFolder, 'steam_api64.dll.bak')
+    );
 
-  for (const bakFile of bakFiles) {
-    try {
-      const originalPath = bakFile.replace('.bak', '');
-      if (fs.existsSync(originalPath)) {
-        fs.unlinkSync(originalPath);
-      }
-      fs.renameSync(bakFile, originalPath);
-      removedItems.push(`Restored: ${path.basename(originalPath)}`);
-    } catch (err) {
-      errors.push(`Failed to restore ${bakFile}: ${err.message}`);
-    }
-  }
-
-  // 2. Delete steam_settings folders
-  const steamSettingsFolders = [];
-  function findSteamSettings(dir, depth = 0) {
-    if (depth > 3 || !fs.existsSync(dir)) return; // Limit recursion depth
-
-    const files = fs.readdirSync(dir);
-    for (const file of files) {
-      const fullPath = path.join(dir, file);
+    for (const bakFile of bakFiles) {
       try {
-        const stat = fs.statSync(fullPath);
-        if (stat.isDirectory()) {
-          if (file.toLowerCase() === 'steam_settings') {
-            steamSettingsFolders.push(fullPath);
-          } else {
-            findSteamSettings(fullPath, depth + 1);
-          }
+        const originalPath = bakFile.replace('.bak', '');
+        if (fs.existsSync(originalPath)) {
+          fs.unlinkSync(originalPath);
         }
+        fs.renameSync(bakFile, originalPath);
+        removedItems.push(`Restored: ${path.basename(originalPath)}`);
       } catch (err) {
-        console.warn(`Error accessing ${fullPath}:`, err);
+        errors.push(`Failed to restore ${bakFile}: ${err.message}`);
       }
     }
-  }
 
-  findSteamSettings(gameFolder);
+    // 2. Delete steam_settings folders (Goldberg)
+    const steamSettingsFolders = [];
+    function findSteamSettings(dir, depth = 0) {
+      if (depth > 3 || !fs.existsSync(dir)) return; // Limit recursion depth
 
-  for (const folder of steamSettingsFolders) {
-    try {
-      fs.rmSync(folder, { recursive: true, force: true });
-      removedItems.push(`Deleted: steam_settings folder`);
-    } catch (err) {
-      errors.push(`Failed to delete steam_settings: ${err.message}`);
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        const fullPath = path.join(dir, file);
+        try {
+          const stat = fs.statSync(fullPath);
+          if (stat.isDirectory()) {
+            if (file.toLowerCase() === 'steam_settings') {
+              steamSettingsFolders.push(fullPath);
+            } else {
+              findSteamSettings(fullPath, depth + 1);
+            }
+          }
+        } catch (err) {
+          console.warn(`Error accessing ${fullPath}:`, err);
+        }
+      }
+    }
+
+    findSteamSettings(gameFolder);
+
+    for (const folder of steamSettingsFolders) {
+      try {
+        fs.rmSync(folder, { recursive: true, force: true });
+        removedItems.push(`Deleted: steam_settings folder`);
+      } catch (err) {
+        errors.push(`Failed to delete steam_settings: ${err.message}`);
+      }
     }
   }
 
   // 3. Delete all Unsteam files
-  const unsteamFiles = [
-    'unsteam.ini',
-    'unsteam64.dll',
-    'unsteam.dll',
-    'unsteam_loader64.exe',
-    'unsteam_loader32.exe',
-    'winmm.dll',
-    'winmm64.dll'
-  ];
+  if (removeUnsteam) {
+    const unsteamFiles = [
+      'unsteam.ini',
+      'unsteam64.dll',
+      'unsteam.dll',
+      'unsteam_loader64.exe',
+      'unsteam_loader32.exe',
+      'winmm.dll',
+      'winmm64.dll'
+    ];
 
-  for (const fileName of unsteamFiles) {
-    const foundFiles = findFiles(gameFolder, fileName);
-    for (const filePath of foundFiles) {
-      try {
-        fs.unlinkSync(filePath);
-        removedItems.push(`Deleted: ${fileName}`);
-      } catch (err) {
-        errors.push(`Failed to delete ${fileName}: ${err.message}`);
+    for (const fileName of unsteamFiles) {
+      const foundFiles = findFiles(gameFolder, fileName);
+      for (const filePath of foundFiles) {
+        try {
+          fs.unlinkSync(filePath);
+          removedItems.push(`Deleted: ${fileName}`);
+        } catch (err) {
+          errors.push(`Failed to delete ${fileName}: ${err.message}`);
+        }
       }
     }
   }
@@ -1476,8 +1480,10 @@ async function unfixGame(gameFolder) {
 }
 
 // IPC handler for unfixing games
-ipcMain.handle('unfix-game', async (event, appId) => {
+ipcMain.handle('unfix-game', async (event, options) => {
   try {
+    const { appId, removeUnsteam, removeGoldberg, removeSteamless } = options;
+
     // Step 1: Find Steam installation
     const steamPath = findSteamPath();
     if (!steamPath) {
@@ -1497,8 +1503,8 @@ ipcMain.handle('unfix-game', async (event, appId) => {
     const fixState = loadFixState(gameFolder);
     const removedItems = [];
 
-    // Step 5: Restore Steamless backup (if it was used)
-    if (fixState && fixState.steamlessEnabled) {
+    // Step 5: Restore Steamless backup (if requested and it was used)
+    if (removeSteamless && fixState && fixState.steamlessEnabled) {
       try {
         const gameExeFullPath = findGameExe(gameFolder);
         if (gameExeFullPath) {
@@ -1520,26 +1526,49 @@ ipcMain.handle('unfix-game', async (event, appId) => {
       }
     }
 
-    // Step 6: Remove Steam launch options (if Unsteam was installed)
-    if (!fixState || fixState.unsteamEnabled) {
+    // Step 6: Close Steam if Unsteam is being removed
+    if (removeUnsteam) {
+      console.log('Closing Steam before removing Unsteam...');
+      await closeSteam();
+    }
+
+    // Step 7: Remove Steam launch options (if Unsteam is being removed)
+    if (removeUnsteam) {
       try {
         const removed = await removeSteamLaunchOptions(appId);
         if (removed) {
           console.log('Steam launch options removed successfully');
+          removedItems.push('Removed Steam launch options');
         }
       } catch (error) {
         console.warn('Failed to remove launch options:', error);
       }
     }
 
-    // Step 7: Unfix the game (remove Unsteam/Goldberg files)
-    if (!fixState || fixState.unsteamEnabled || fixState.goldbergEnabled) {
-      const result = await unfixGame(gameFolder);
-      removedItems.push(...result.removedItems);
+    // Step 8: Unfix the game (remove Unsteam/Goldberg files based on selection)
+    const result = await unfixGame(gameFolder, removeGoldberg, removeUnsteam);
+    removedItems.push(...result.removedItems);
+
+    // Step 9: Update or delete fix state file
+    if (removeUnsteam && removeGoldberg && removeSteamless) {
+      // All components removed, delete the state file
+      deleteFixState(gameFolder);
+    } else if (fixState) {
+      // Update fix state to reflect what's still installed
+      const updatedState = {
+        ...fixState,
+        steamlessEnabled: removeSteamless ? false : fixState.steamlessEnabled,
+        unsteamEnabled: removeUnsteam ? false : fixState.unsteamEnabled,
+        goldbergEnabled: removeGoldberg ? false : fixState.goldbergEnabled
+      };
+      saveFixState(gameFolder, updatedState);
     }
 
-    // Step 8: Delete fix state file
-    deleteFixState(gameFolder);
+    // Step 10: Restart Steam if Unsteam was removed
+    if (removeUnsteam) {
+      console.log('Restarting Steam...');
+      await restartSteam(steamPath);
+    }
 
     return {
       success: true,

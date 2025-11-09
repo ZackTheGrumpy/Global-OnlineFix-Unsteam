@@ -800,8 +800,28 @@ async function handleUnfix() {
     return;
   }
 
+  // Check which components are selected for removal
+  const removeUnsteam = unsteamCheckbox.checked;
+  const removeGoldberg = goldbergCheckbox.checked;
+  const removeSteamless = steamlessCheckbox.checked;
+
+  // Validate at least one component is selected
+  if (!removeUnsteam && !removeGoldberg && !removeSteamless) {
+    showError('No Components Selected', 'Please select at least one component to remove (check the boxes for Unsteam, Goldberg, or Steamless).');
+    return;
+  }
+
+  // Build dynamic confirmation message
+  const components = [];
+  if (removeUnsteam) components.push('Unsteam');
+  if (removeGoldberg) components.push('Goldberg');
+  if (removeSteamless) components.push('Steamless');
+
+  const componentsList = components.join(', ');
+  const confirmMessage = `This will remove ${componentsList} modifications from the game.${removeUnsteam ? '\n\nSteam will be automatically closed and restarted.' : ''}\n\nContinue?`;
+
   // Confirm with user
-  if (!confirm('This will remove all Unsteam, Goldberg, and Steamless modifications from the game. Continue?')) {
+  if (!confirm(confirmMessage)) {
     return;
   }
 
@@ -814,17 +834,26 @@ async function handleUnfix() {
   goldbergCheckbox.disabled = true;
   steamlessCheckbox.disabled = true;
 
+  // Build status message
+  const statusMsg = `Removing ${componentsList}...`;
+
   // Show status
-  showStatus('Removing fix...');
+  showStatus(statusMsg);
 
   try {
     // Call the main process to unfix the game
-    const result = await window.electronAPI.unfixGame(appId);
+    const options = {
+      appId,
+      removeUnsteam,
+      removeGoldberg,
+      removeSteamless
+    };
+    const result = await window.electronAPI.unfixGame(options);
 
     hideStatus();
 
     if (result.success) {
-      showUnfixSuccess(result);
+      showUnfixSuccess(result, removeUnsteam);
     } else {
       showError('Unfix Failed', result.error || 'An error occurred while unfixing the game.');
     }
@@ -843,7 +872,7 @@ async function handleUnfix() {
   }
 }
 
-function showUnfixSuccess(result) {
+function showUnfixSuccess(result, unsteamWasRemoved) {
   resultSection.classList.remove('hidden', 'error');
   resultSection.classList.add('success');
   resultTitle.textContent = '✓ Game Unfixed Successfully!';
@@ -851,6 +880,11 @@ function showUnfixSuccess(result) {
   const removedItemsHtml = result.removedItems && result.removedItems.length > 0
     ? `<ul style="margin-left: 20px; margin-top: 10px; line-height: 1.6;">${result.removedItems.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
     : '<p>No modifications were found to remove.</p>';
+
+  // Build the Steam restart message
+  const steamMessage = unsteamWasRemoved
+    ? '<p><strong style="color: #27ae60;">✓ Steam has been automatically closed and restarted</strong></p><p>The changes have been applied. You can now launch the game normally.</p>'
+    : '<p>The selected components have been removed. You can now launch the game normally.</p>';
 
   resultDetails.innerHTML = `
     <div class="result-details-item">
@@ -861,9 +895,8 @@ function showUnfixSuccess(result) {
       ${removedItemsHtml}
     </div>
     <div class="result-details-item" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
-      <p>✓ The game has been restored to its original state.</p>
-      <p><strong style="color: #e74c3c;">⚠️ IMPORTANT: Close Steam completely and reopen it</strong></p>
-      <p>After restarting Steam, you can launch the game normally.</p>
+      <p>✓ The game has been restored.</p>
+      ${steamMessage}
     </div>
   `;
 }
