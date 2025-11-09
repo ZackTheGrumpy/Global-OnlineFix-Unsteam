@@ -299,15 +299,45 @@ async function removeSteamLaunchOptions(appId) {
 
         // Check if app ID exists in this config
         if (content.includes(`"${appId}"`)) {
-          // Remove LaunchOptions for this app
-          const launchOptionsPattern = new RegExp(
-            `("${appId}"\\s*\\n\\s*\\{[^}]*)"LaunchOptions"\\s*"[^"]*"\\s*\\n`,
-            's'
-          );
+          const lines = content.split('\n');
+          const newLines = [];
+          let inAppSection = false;
+          let braceDepth = 0;
+          let removedLine = false;
 
-          if (launchOptionsPattern.test(content)) {
-            content = content.replace(launchOptionsPattern, '$1');
-            fs.writeFileSync(configPath, content, 'utf-8');
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+
+            // Check if this line is the app ID
+            if (line.includes(`"${appId}"`)) {
+              inAppSection = true;
+              braceDepth = 0;
+            }
+
+            // Track brace depth when in app section
+            if (inAppSection) {
+              const openBraces = (line.match(/\{/g) || []).length;
+              const closeBraces = (line.match(/\}/g) || []).length;
+              braceDepth += openBraces - closeBraces;
+
+              // Check if this is the LaunchOptions line
+              if (line.includes('"LaunchOptions"')) {
+                removedLine = true;
+                continue; // Skip this line
+              }
+
+              // Exit app section when braces are balanced
+              if (braceDepth === 0 && i > 0) {
+                inAppSection = false;
+              }
+            }
+
+            newLines.push(line);
+          }
+
+          if (removedLine) {
+            const newContent = newLines.join('\n');
+            fs.writeFileSync(configPath, newContent, 'utf-8');
             modified = true;
             console.log(`Launch options removed for AppID ${appId} in user ${user}`);
           }
