@@ -105,6 +105,20 @@ function selectGame(appId, gameName) {
   fetchAndDisplayGameInfo(appId);
 }
 
+// Clear game selection
+function clearGameSelection() {
+  appIdInput.value = '';
+  gameSearchInput.value = '';
+  installBtn.disabled = true;
+  unfixBtn.disabled = true;
+
+  // Hide game info section
+  const gameInfoSection = document.getElementById('gameInfoSection');
+  if (gameInfoSection) {
+    gameInfoSection.classList.add('hidden');
+  }
+}
+
 // Fetch and display game info from PCGamingWiki
 async function fetchAndDisplayGameInfo(appId) {
   console.log(`[Renderer] Fetching game info for AppID: ${appId}`);
@@ -379,7 +393,14 @@ document.addEventListener('click', (e) => {
 });
 
 // Game search input event listener
-gameSearchInput.addEventListener('input', handleGameSearch);
+gameSearchInput.addEventListener('input', () => {
+  handleGameSearch();
+
+  // Clear App ID when user starts searching for a new game
+  if (appIdInput.value && gameSearchInput.value !== appIdInput.value) {
+    appIdInput.value = '';
+  }
+});
 
 // Goldberg checkbox toggle
 goldbergCheckbox.addEventListener('change', () => {
