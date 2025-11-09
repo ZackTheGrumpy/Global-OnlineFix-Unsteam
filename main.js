@@ -278,7 +278,7 @@ function modifyUnsteamIni(iniPath, exePath, dllPath, appId) {
   }
 }
 
-// Remove Steam launch options
+// Remove Steam launch options by setting them to empty string
 async function removeSteamLaunchOptions(appId) {
   try {
     const steamPath = findSteamPath();
@@ -299,47 +299,23 @@ async function removeSteamLaunchOptions(appId) {
 
         // Check if app ID exists in this config
         if (content.includes(`"${appId}"`)) {
-          const lines = content.split('\n');
-          const newLines = [];
-          let inAppSection = false;
-          let braceDepth = 0;
-          let removedLine = false;
+          // Check if LaunchOptions exists for this app
+          const launchOptionsPattern = new RegExp(
+            `"${appId}"\\s*\\n\\s*\\{[^}]*"LaunchOptions"\\s*"[^"]*"`,
+            's'
+          );
 
-          for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
+          if (launchOptionsPattern.test(content)) {
+            // Clear the LaunchOptions value (set it to empty string)
+            // This mirrors how modifySteamLaunchOptions works but clears the value
+            content = content.replace(
+              new RegExp(`("${appId}"\\s*\\n\\s*\\{[^}]*"LaunchOptions"\\s*")([^"]*)(")`,'s'),
+              `$1$3`  // Keeps the key and quotes but removes the value between them
+            );
 
-            // Check if this line is the app ID
-            if (line.includes(`"${appId}"`)) {
-              inAppSection = true;
-              braceDepth = 0;
-            }
-
-            // Track brace depth when in app section
-            if (inAppSection) {
-              const openBraces = (line.match(/\{/g) || []).length;
-              const closeBraces = (line.match(/\}/g) || []).length;
-              braceDepth += openBraces - closeBraces;
-
-              // Check if this is the LaunchOptions line
-              if (line.includes('"LaunchOptions"')) {
-                removedLine = true;
-                continue; // Skip this line
-              }
-
-              // Exit app section when braces are balanced
-              if (braceDepth === 0 && i > 0) {
-                inAppSection = false;
-              }
-            }
-
-            newLines.push(line);
-          }
-
-          if (removedLine) {
-            const newContent = newLines.join('\n');
-            fs.writeFileSync(configPath, newContent, 'utf-8');
+            fs.writeFileSync(configPath, content, 'utf-8');
             modified = true;
-            console.log(`Launch options removed for AppID ${appId} in user ${user}`);
+            console.log(`Launch options cleared for AppID ${appId} in user ${user}`);
           }
         }
       }
