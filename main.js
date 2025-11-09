@@ -594,6 +594,39 @@ async function closeSteamAndWait(steamPath) {
   }
 }
 
+// Helper function to restart Steam
+async function restartSteam(steamPath) {
+  const { exec } = require('child_process');
+
+  try {
+    logToRenderer('\n🔄 Restarting Steam...');
+
+    // Find steam.exe path
+    const steamExePath = path.join(steamPath, 'steam.exe');
+
+    if (!fs.existsSync(steamExePath)) {
+      logErrorToRenderer('Steam.exe not found at:', steamExePath);
+      return false;
+    }
+
+    // Start Steam (using exec for non-blocking)
+    exec(`"${steamExePath}"`, (error) => {
+      if (error) {
+        logErrorToRenderer('Error starting Steam:', error.message);
+      }
+    });
+
+    // Give Steam a moment to start
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    logToRenderer('✓ Steam restarted successfully');
+    return true;
+  } catch (e) {
+    logErrorToRenderer('Error restarting Steam:', e.message);
+    return false;
+  }
+}
+
 async function modifySteamLaunchOptions(appId, loaderPath) {
   logToRenderer('\n╔══════════════════════════════════════════════════════════╗');
   logToRenderer('║  INSIDE modifySteamLaunchOptions FUNCTION               ║');
@@ -1703,6 +1736,16 @@ ipcMain.handle('install-globalfix', async (event, options) => {
       logToRenderer('✗ Unsteam is NOT enabled - skipping installation');
     }
 
+    // Store Steam path for later restart (if needed)
+    let steamPathForRestart = null;
+    if (unsteamEnabled && steamNeedsRestart) {
+      try {
+        steamPathForRestart = findSteamPath();
+      } catch (e) {
+        console.warn('Could not get Steam path for restart:', e.message);
+      }
+    }
+
     // Step 6: Install Goldberg (if enabled)
     let goldbergResult = null;
     if (goldbergEnabled && goldbergOptions) {
@@ -1729,6 +1772,20 @@ ipcMain.handle('install-globalfix', async (event, options) => {
     };
     saveFixState(gameFolder, fixState);
 
+    // Step 8: Restart Steam if it was closed for Unsteam
+    let steamRestarted = false;
+    if (unsteamEnabled && steamNeedsRestart && steamPathForRestart) {
+      logToRenderer('\n==========================================');
+      logToRenderer('RESTARTING STEAM');
+      logToRenderer('==========================================');
+      steamRestarted = await restartSteam(steamPathForRestart);
+      if (steamRestarted) {
+        logToRenderer('✅ Steam has been restarted - your game is ready to play!');
+      } else {
+        logToRenderer('⚠️ Please manually restart Steam to complete the setup');
+      }
+    }
+
     return {
       success: true,
       gameFolder: gameExeDir,
@@ -1741,6 +1798,7 @@ ipcMain.handle('install-globalfix', async (event, options) => {
       launchOptionsSet: launchOptionsSet,
       launchOptionsError: launchOptionsError,
       steamNeedsRestart: steamNeedsRestart,
+      steamRestarted: steamRestarted,
       goldberg: goldbergResult ? {
         installed: true,
         steamApiPath: goldbergResult.steamApiPath,

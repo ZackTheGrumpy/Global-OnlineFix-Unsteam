@@ -621,9 +621,18 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
   resultSection.classList.add('success');
   resultTitle.textContent = '✓ Fix Applied Successfully!';
 
-  // Add prominent Steam restart warning if needed
+  // Add prominent Steam restart banner if needed
   let steamRestartBanner = '';
-  if (result.steamNeedsRestart) {
+  if (result.steamRestarted) {
+    steamRestartBanner = `
+      <div style="background: #27ae60; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: bold; font-size: 1.1em;">
+        ✅ STEAM HAS BEEN RESTARTED - READY TO PLAY! ✅
+        <div style="font-size: 0.9em; margin-top: 8px; font-weight: normal;">
+          Launch your game from Steam and enjoy!
+        </div>
+      </div>
+    `;
+  } else if (result.steamNeedsRestart) {
     steamRestartBanner = `
       <div style="background: #ff5722; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: bold; font-size: 1.1em; animation: pulse 2s infinite;">
         ⚠️ STEAM WAS CLOSED - PLEASE RESTART STEAM NOW! ⚠️
@@ -675,8 +684,11 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
     }
   }
 
-  // Show Steam restart warning based on whether we closed Steam
-  if (result.steamNeedsRestart) {
+  // Show Steam restart status based on whether we closed and restarted Steam
+  if (result.steamRestarted) {
+    nextSteps += '<li><strong style="color: #27ae60; font-size: 1.1em;">✅ Steam has been automatically restarted - Your game is ready to play!</strong></li>';
+    nextSteps += '<li>Launch your game normally from Steam</li>';
+  } else if (result.steamNeedsRestart) {
     nextSteps += '<li><strong style="color: #e74c3c; font-size: 1.1em;">⚠️ CRITICAL: Steam was closed to apply launch options - Please restart Steam now!</strong></li>';
     nextSteps += '<li>After restarting Steam, launch your game normally</li>';
   } else if (unsteamEnabled || goldbergEnabled) {
