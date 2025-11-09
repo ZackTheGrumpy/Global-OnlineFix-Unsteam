@@ -640,13 +640,11 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
 
     // Check if launch options were set successfully
     if (result.launchOptionsSet) {
-      nextSteps += '<li>Steam launch options have been configured automatically</li>';
+      nextSteps += '<li>✅ Steam launch options have been configured automatically</li>';
     } else if (result.launchOptionsError) {
       nextSteps += '<li><strong style="color: #e74c3c;">⚠️ WARNING: Steam launch options could not be set automatically</strong></li>';
       nextSteps += `<li style="color: #e74c3c; font-size: 0.9em;">Error: ${escapeHtml(result.launchOptionsError)}</li>`;
-      nextSteps += '<li style="font-weight: bold;">You must set launch options manually in Steam:</li>';
-      nextSteps += `<li style="font-family: monospace; background: #f5f5f5; padding: 5px; margin: 5px 0;">"${result.unsteam.loaderPath}" %command%</li>`;
-      nextSteps += '<li style="font-size: 0.9em;">Right-click game → Properties → Launch Options → Paste the above</li>';
+      nextSteps += '<li style="font-weight: bold; color: #e74c3c;">Please set launch options manually (see instructions below)</li>';
     }
   }
 
@@ -668,6 +666,52 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
     nextSteps += '<li>Each player should have a unique Steam ID (increment the last digits)</li>';
   }
 
+  // Build manual launch options section for Unsteam
+  let manualLaunchOptionsSection = '';
+  if (unsteamEnabled && result.unsteam) {
+    const launchOptionsCommand = `"${result.unsteam.loaderPath}" %command%`;
+    const statusColor = result.launchOptionsSet ? '#27ae60' : '#e74c3c';
+    const statusIcon = result.launchOptionsSet ? '✅' : '⚠️';
+    const statusText = result.launchOptionsSet ? 'Configured Automatically' : 'Manual Setup Required';
+
+    manualLaunchOptionsSection = `
+      <div class="result-details-item" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
+        <strong style="color: ${statusColor};">${statusIcon} Steam Launch Options - ${statusText}</strong>
+        <p style="margin: 10px 0; color: #555; font-size: 0.95em;">
+          ${result.launchOptionsSet
+            ? 'The launch options have been set automatically. You can verify or manually set them using the command below:'
+            : 'Automatic setup failed. Please manually set the launch options using the command below:'}
+        </p>
+
+        <div style="background: #f8f9fa; border: 2px solid #667eea; border-radius: 8px; padding: 15px; margin: 10px 0;">
+          <strong style="color: #667eea;">Launch Options Command:</strong>
+          <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 10px; margin: 10px 0; font-family: 'Courier New', monospace; font-size: 0.9em; word-break: break-all; user-select: all;">
+            ${escapeHtml(launchOptionsCommand)}
+          </div>
+          <button onclick="navigator.clipboard.writeText('${launchOptionsCommand.replace(/'/g, "\\'")}').then(() => alert('✅ Launch options copied to clipboard!'))"
+                  onmouseover="this.style.background='#5568d3'"
+                  onmouseout="this.style.background='#667eea'"
+                  style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 5px; transition: background 0.2s;">
+            📋 Copy to Clipboard
+          </button>
+        </div>
+
+        <div style="background: #e8f4f8; border-left: 4px solid #3498db; padding: 12px; margin: 10px 0; border-radius: 4px;">
+          <strong style="color: #2980b9;">How to Set Launch Options Manually:</strong>
+          <ol style="margin: 8px 0 0 20px; line-height: 1.8; color: #34495e;">
+            <li>Open <strong>Steam</strong></li>
+            <li>Go to your <strong>Library</strong></li>
+            <li><strong>Right-click</strong> on the game</li>
+            <li>Select <strong>Properties</strong></li>
+            <li>Find the <strong>Launch Options</strong> field at the bottom</li>
+            <li>Paste the command above (or click Copy button)</li>
+            <li>Close the properties window</li>
+          </ol>
+        </div>
+      </div>
+    `;
+  }
+
   resultDetails.innerHTML = `
     <div class="result-details-item">
       <strong>Game Folder:</strong> ${escapeHtml(result.gameFolder)}
@@ -686,6 +730,7 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
         ${nextSteps}
       </ol>
     </div>
+    ${manualLaunchOptionsSection}
   `;
 }
 
