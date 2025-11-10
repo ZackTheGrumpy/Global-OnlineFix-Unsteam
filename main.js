@@ -1200,6 +1200,56 @@ ipcMain.handle('unfix-game', async (event, options) => {
   }
 });
 
+// Function to detect if executable is 32-bit or 64-bit
+function detectExeArchitecture(exePath) {
+  try {
+    // Read the first 64 bytes to get DOS header
+    const fd = fs.openSync(exePath, 'r');
+    const buffer = Buffer.alloc(64);
+    fs.readSync(fd, buffer, 0, 64, 0);
+
+    // Check if it's a valid PE file (starts with 'MZ')
+    if (buffer[0] !== 0x4D || buffer[1] !== 0x5A) {
+      fs.closeSync(fd);
+      console.log('Not a valid PE executable (missing MZ signature)');
+      return 'x64'; // Default to x64 if we can't detect
+    }
+
+    // Get offset to PE header (at offset 0x3C in DOS header)
+    const peOffset = buffer.readUInt32LE(0x3C);
+
+    // Read PE header
+    const peBuffer = Buffer.alloc(6);
+    fs.readSync(fd, peBuffer, 0, 6, peOffset);
+    fs.closeSync(fd);
+
+    // Check PE signature ('PE\0\0')
+    if (peBuffer[0] !== 0x50 || peBuffer[1] !== 0x45 || peBuffer[2] !== 0x00 || peBuffer[3] !== 0x00) {
+      console.log('Invalid PE signature');
+      return 'x64'; // Default to x64 if we can't detect
+    }
+
+    // Read machine type (2 bytes at offset 4 from PE signature)
+    const machineType = peBuffer.readUInt16LE(4);
+
+    // 0x014c = IMAGE_FILE_MACHINE_I386 (32-bit)
+    // 0x8664 = IMAGE_FILE_MACHINE_AMD64 (64-bit)
+    if (machineType === 0x014c) {
+      console.log(`Detected 32-bit executable (machine type: 0x${machineType.toString(16)})`);
+      return 'x32';
+    } else if (machineType === 0x8664) {
+      console.log(`Detected 64-bit executable (machine type: 0x${machineType.toString(16)})`);
+      return 'x64';
+    } else {
+      console.log(`Unknown machine type: 0x${machineType.toString(16)}, defaulting to x64`);
+      return 'x64'; // Default to x64 for unknown types
+    }
+  } catch (error) {
+    console.error('Error detecting exe architecture:', error);
+    return 'x64'; // Default to x64 on error
+  }
+}
+
 // Main IPC handler
 ipcMain.handle('install-globalfix', async (event, options) => {
   try {
@@ -1237,7 +1287,16 @@ ipcMain.handle('install-globalfix', async (event, options) => {
     let gameExeDir = path.dirname(gameExeFullPath);
     let gameExeName = path.basename(gameExeFullPath);
 
-    // Step 4.5: Steamless unpacking (if enabled)
+    // Step 4.5: Detect game architecture (32-bit vs 64-bit)
+    const gameArchitecture = detectExeArchitecture(gameExeFullPath);
+    console.log(`Game architecture detected: ${gameArchitecture}`);
+
+    // Determine which Unsteam files to use based on architecture
+    const unsteamDll = gameArchitecture === 'x32' ? 'unsteam.dll' : 'unsteam64.dll';
+    const unsteamLoader = gameArchitecture === 'x32' ? 'unsteam_loader.exe' : 'unsteam_loader64.exe';
+    console.log(`Will use: ${unsteamDll} and ${unsteamLoader}`);
+
+    // Step 4.6: Steamless unpacking (if enabled)
     let steamlessApplied = false;
     if (steamlessEnabled) {
       try {
@@ -1306,7 +1365,7 @@ ipcMain.handle('install-globalfix', async (event, options) => {
 
         // Use full paths for exe and dll
         exePathForIni = gameExeFullPath;
-        dllPathForIni = path.join(gameExeDir, 'unsteam64.dll');
+        dllPathForIni = path.join(gameExeDir, unsteamDll);
 
         // Modify BOTH copies of unsteam.ini with full paths
         modifyUnsteamIni(extractedIniPath, exePathForIni, dllPathForIni, appId, steamId, username);
@@ -1323,7 +1382,7 @@ ipcMain.handle('install-globalfix', async (event, options) => {
 
         // Use just filenames
         exePathForIni = gameExeName;
-        dllPathForIni = 'unsteam64.dll';
+        dllPathForIni = unsteamDll;
 
         // Modify the single unsteam.ini
         modifyUnsteamIni(finalIniPath, exePathForIni, dllPathForIni, appId, steamId, username);
@@ -1399,7 +1458,8 @@ ipcMain.handle('install-globalfix', async (event, options) => {
       steamless: steamlessApplied,
       unsteam: unsteamEnabled ? {
         installed: true,
-        loaderPath: path.join(gameExeDir, 'unsteam_loader64.exe')
+        loaderPath: path.join(gameExeDir, unsteamLoader),
+        architecture: gameArchitecture
       } : null,
       goldberg: goldbergResult ? {
         installed: true,
