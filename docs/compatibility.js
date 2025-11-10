@@ -121,8 +121,16 @@ function updateStats(data) {
 function setupSearch() {
     const searchInput = document.getElementById('searchInput');
 
+    if (!searchInput) {
+        console.error('Search input not found!');
+        return;
+    }
+
+    console.log('✓ Search functionality initialized');
+
     searchInput.addEventListener('input', (e) => {
         const searchTerm = e.target.value.toLowerCase();
+        console.log(`Searching for: "${searchTerm}"`);
         filterTable(searchTerm);
     });
 }
@@ -133,19 +141,27 @@ function filterTable(searchTerm = '') {
     const rows = tbody.querySelectorAll('tr');
     const activeFilter = document.querySelector('.filter-btn.active')?.dataset.filter || 'all';
 
+    console.log(`Filtering table: search="${searchTerm}", filter="${activeFilter}", rows=${rows.length}`);
+
+    let visibleCount = 0;
+
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
+
         // Skip placeholder rows (colspan rows have fewer cells)
-        if (cells.length < 5) return;
+        if (cells.length < 5) {
+            console.log('Skipping placeholder row');
+            return;
+        }
 
         const gameName = cells[0]?.textContent.toLowerCase() || '';
         const appId = cells[1]?.textContent.toLowerCase() || '';
 
-        const matchesSearch = gameName.includes(searchTerm) || appId.includes(searchTerm);
+        const matchesSearch = searchTerm === '' || gameName.includes(searchTerm) || appId.includes(searchTerm);
 
         let matchesFilter = true;
         if (activeFilter !== 'all') {
-            const statusBadge = cells[2]?.querySelector('.status-badge'); // Status is now in column 2
+            const statusBadge = cells[2]?.querySelector('.status-badge');
 
             if (activeFilter === 'works') {
                 matchesFilter = statusBadge?.classList.contains('status-works');
@@ -154,8 +170,13 @@ function filterTable(searchTerm = '') {
             }
         }
 
-        row.style.display = (matchesSearch && matchesFilter) ? '' : 'none';
+        const shouldShow = matchesSearch && matchesFilter;
+        row.style.display = shouldShow ? '' : 'none';
+
+        if (shouldShow) visibleCount++;
     });
+
+    console.log(`✓ Filtered complete: ${visibleCount} games visible`);
 }
 
 // Setup filter buttons
