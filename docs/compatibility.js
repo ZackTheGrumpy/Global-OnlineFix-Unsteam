@@ -36,14 +36,16 @@ async function loadCompatibilityData() {
         const response = await fetch('compatibility-data.json');
         if (response.ok) {
             compatibilityData = await response.json();
+            console.log(`✓ Loaded ${compatibilityData.length} games from compatibility-data.json`);
             populateTable(compatibilityData);
             updateStats(compatibilityData);
         } else {
             // If no data file exists, show placeholder
-            console.log('No compatibility data available yet');
+            console.log('No compatibility data available yet (HTTP ' + response.status + ')');
         }
     } catch (error) {
-        console.log('Compatibility data will be added in the future');
+        console.error('Error loading compatibility data:', error);
+        console.log('Make sure you are viewing the page through a web server (not file://)');
     }
 }
 
@@ -53,8 +55,11 @@ function populateTable(data) {
 
     if (!data || data.length === 0) {
         // Keep the "Coming Soon" message
+        console.log('No data to populate table');
         return;
     }
+
+    console.log(`Populating table with ${data.length} games`);
 
     // Clear existing rows
     tbody.innerHTML = '';
@@ -73,6 +78,8 @@ function populateTable(data) {
 
         tbody.appendChild(row);
     });
+
+    console.log('✓ Table populated successfully');
 }
 
 // Get status badge HTML
@@ -128,7 +135,8 @@ function filterTable(searchTerm = '') {
 
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
-        if (cells.length === 1) return; // Skip "no data" row
+        // Skip placeholder rows (colspan rows have fewer cells)
+        if (cells.length < 5) return;
 
         const gameName = cells[0]?.textContent.toLowerCase() || '';
         const appId = cells[1]?.textContent.toLowerCase() || '';
