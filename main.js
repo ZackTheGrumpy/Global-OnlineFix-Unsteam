@@ -388,70 +388,6 @@ function modifyUnsteamIni(iniPath, exePath, dllPath, appId, steamId, username) {
   }
 }
 
-// Remove Steam launch options by setting them to empty string
-async function removeSteamLaunchOptions(appId) {
-  try {
-    const steamPath = findSteamPath();
-    if (!steamPath) {
-      throw new Error('Steam path not found');
-    }
-
-    const userDataPath = path.join(steamPath, 'userdata');
-    const users = fs.readdirSync(userDataPath);
-
-    let modifiedCount = 0;
-    const modifiedUsers = [];
-
-    // Loop through ALL users and clear launch options for each one that has this game
-    for (const user of users) {
-      const configPath = path.join(userDataPath, user, 'config', 'localconfig.vdf');
-
-      if (fs.existsSync(configPath)) {
-        let content = fs.readFileSync(configPath, 'utf-8');
-
-        // Check if app ID exists in this config
-        if (content.includes(`"${appId}"`)) {
-          // Check if LaunchOptions exists for this app
-          const launchOptionsPattern = new RegExp(
-            `"${appId}"\\s*\\n\\s*\\{[^}]*"LaunchOptions"\\s*"[^"]*"`,
-            's'
-          );
-
-          if (launchOptionsPattern.test(content)) {
-            // Clear the LaunchOptions value (set it to empty string)
-            // This mirrors how modifySteamLaunchOptions works but clears the value
-            content = content.replace(
-              new RegExp(`("${appId}"\\s*\\n\\s*\\{[^}]*"LaunchOptions"\\s*")([^"]*)(")`,'s'),
-              `$1$3`  // Keeps the key and quotes but removes the value between them
-            );
-
-            fs.writeFileSync(configPath, content, 'utf-8');
-            modifiedCount++;
-            modifiedUsers.push(user);
-            console.log(`✓ Launch options cleared for AppID ${appId} in Steam user ${user}`);
-          }
-        }
-      }
-    }
-
-    // Log summary
-    if (modifiedCount > 0) {
-      if (modifiedCount === 1) {
-        console.log(`✓ Launch options successfully cleared for 1 Steam user`);
-      } else {
-        console.log(`✓ Launch options successfully cleared for ${modifiedCount} Steam users: ${modifiedUsers.join(', ')}`);
-      }
-    } else {
-      console.log(`No launch options found to clear for AppID ${appId}`);
-    }
-
-    return modifiedCount > 0;
-  } catch (error) {
-    console.error('Error removing launch options:', error);
-    return false;
-  }
-}
-
 // Save fix state to file for tracking what was installed
 function saveFixState(gameFolder, state) {
   try {
@@ -498,393 +434,6 @@ function deleteFixState(gameFolder) {
   } catch (error) {
     console.error('Error deleting fix state:', error);
     return false;
-  }
-}
-
-// Modify Steam launch options
-// Helper function to close Steam and wait for it to fully exit
-async function closeSteamAndWait(steamPath) {
-  const { execSync } = require('child_process');
-
-  try {
-    // Check if Steam is running
-    logToRenderer('Checking if Steam is running...');
-    let tasklistOutput;
-    try {
-      tasklistOutput = execSync('tasklist /FI "IMAGENAME eq steam.exe" /NH', {
-        encoding: 'utf-8'
-      });
-    } catch (e) {
-      logErrorToRenderer('Failed to check if Steam is running:', e.message);
-      return false;
-    }
-
-    if (!tasklistOutput.toLowerCase().includes('steam.exe')) {
-      logToRenderer('Steam is not running, nothing to close');
-      return false; // Steam is not running
-    }
-
-    logToRenderer('🔄 Closing Steam to apply configuration changes...');
-    logToRenderer('   Steam must fully shut down and save its config before we can modify it.');
-
-    // Close Steam gracefully first
-    try {
-      execSync('taskkill /IM steam.exe', {
-        encoding: 'utf-8'
-      });
-      logToRenderer('   Sent graceful shutdown signal to Steam...');
-    } catch (e) {
-      // Ignore errors - Steam might already be closed
-      logToRenderer('   Note: taskkill returned:', e.message);
-    }
-
-    // Wait for Steam to fully close (check every 500ms, max 10 seconds)
-    let attempts = 0;
-    const maxAttempts = 20;
-    const startTime = Date.now();
-    const maxWaitTime = 10000; // 10 seconds maximum
-
-    while (attempts < maxAttempts && (Date.now() - startTime) < maxWaitTime) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      try {
-        const checkOutput = execSync('tasklist /FI "IMAGENAME eq steam.exe" /NH', {
-          encoding: 'utf-8'
-        });
-        if (!checkOutput.toLowerCase().includes('steam.exe')) {
-          logToRenderer('✓ Steam process has exited');
-          break;
-        }
-      } catch (e) {
-        // If tasklist fails, assume Steam is closed
-        logToRenderer('✓ Steam appears to be closed');
-        break;
-      }
-      attempts++;
-    }
-
-    // If graceful shutdown didn't work, force kill Steam
-    if (attempts >= maxAttempts || (Date.now() - startTime) >= maxWaitTime) {
-      logToRenderer('⚠️ Steam did not close gracefully, forcing shutdown...');
-      try {
-        execSync('taskkill /F /IM steam.exe', {
-          encoding: 'utf-8'
-        });
-        logToRenderer('✓ Forced Steam to close');
-
-        // Wait a bit more for force kill to complete
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Verify Steam is actually closed
-        try {
-          const verifyOutput = execSync('tasklist /FI "IMAGENAME eq steam.exe" /NH', {
-            encoding: 'utf-8'
-          });
-          if (verifyOutput.toLowerCase().includes('steam.exe')) {
-            logErrorToRenderer('✗ ERROR: Steam is still running even after force kill!');
-            throw new Error('Could not close Steam. Please close Steam manually and try again.');
-          }
-        } catch (e) {
-          if (e.message.includes('Could not close Steam')) {
-            throw e;
-          }
-          // tasklist failed, assume Steam is closed
-          logToRenderer('✓ Steam appears to be closed (verification check failed but proceeding)');
-        }
-      } catch (killError) {
-        if (killError.message.includes('Could not close Steam')) {
-          throw killError;
-        }
-        // If taskkill failed, Steam might already be closed - verify
-        try {
-          const finalCheck = execSync('tasklist /FI "IMAGENAME eq steam.exe" /NH', {
-            encoding: 'utf-8'
-          });
-          if (finalCheck.toLowerCase().includes('steam.exe')) {
-            logErrorToRenderer('✗ ERROR: Failed to close Steam');
-            throw new Error('Could not close Steam. Please close Steam manually and try again.');
-          }
-        } catch (e) {
-          // Assume Steam is closed
-          logToRenderer('✓ Proceeding (could not verify Steam status)');
-        }
-      }
-    }
-
-    // CRITICAL: Wait for Steam's config files to finish being written
-    // Steam writes localconfig.vdf as it shuts down, we need to wait for that to complete
-    logToRenderer('⏳ Waiting for Steam to finish writing config files...');
-
-    const userDataPath = path.join(steamPath, 'userdata');
-    if (fs.existsSync(userDataPath)) {
-      const users = fs.readdirSync(userDataPath);
-      const configFiles = [];
-
-      // Collect all localconfig.vdf files
-      for (const user of users) {
-        const configPath = path.join(userDataPath, user, 'config', 'localconfig.vdf');
-        if (fs.existsSync(configPath)) {
-          configFiles.push(configPath);
-        }
-      }
-
-      // Wait for all config files to stop being modified (stable for 2 seconds)
-      const stabilityWaitMs = 2000;
-      const maxConfigWaitMs = 10000; // Maximum 10 seconds
-      const configStartTime = Date.now();
-
-      let allStable = false;
-      while (!allStable && (Date.now() - configStartTime) < maxConfigWaitMs) {
-        // Get current modification times
-        const mtimes = configFiles.map(f => {
-          try {
-            return fs.statSync(f).mtimeMs;
-          } catch (e) {
-            return 0;
-          }
-        });
-
-        // Wait
-        await new Promise(resolve => setTimeout(resolve, stabilityWaitMs));
-
-        // Check if we've exceeded max wait time
-        if ((Date.now() - configStartTime) >= maxConfigWaitMs) {
-          logToRenderer('⚠️ Config file stability check timed out, proceeding anyway...');
-          break;
-        }
-
-        // Check if any files were modified during the wait
-        allStable = true;
-        for (let i = 0; i < configFiles.length; i++) {
-          try {
-            const newMtime = fs.statSync(configFiles[i]).mtimeMs;
-            if (newMtime !== mtimes[i]) {
-              allStable = false;
-              logToRenderer(`   Config file still being written (${users[i]})...`);
-              break;
-            }
-          } catch (e) {
-            // File might have been deleted or locked, skip
-          }
-        }
-      }
-
-      if (allStable) {
-        logToRenderer('✓ Config files are stable and ready for modification');
-      } else {
-        logToRenderer('⚠️ Config files may still be in use, proceeding anyway...');
-      }
-    }
-
-    // Extra safety wait
-    logToRenderer('   Adding 2-second safety buffer...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    logToRenderer('✓ Steam fully shut down - safe to modify config');
-    return true; // We closed Steam
-
-  } catch (e) {
-    logErrorToRenderer('Error while closing Steam:', e.message);
-    throw e; // Re-throw to fail the operation
-  }
-}
-
-// Helper function to restart Steam
-async function restartSteam(steamPath) {
-  const { exec } = require('child_process');
-
-  try {
-    logToRenderer('\n🔄 Restarting Steam...');
-
-    // Find steam.exe path
-    const steamExePath = path.join(steamPath, 'steam.exe');
-
-    if (!fs.existsSync(steamExePath)) {
-      logErrorToRenderer('Steam.exe not found at:', steamExePath);
-      return false;
-    }
-
-    // Start Steam (using exec for non-blocking)
-    exec(`"${steamExePath}"`, (error) => {
-      if (error) {
-        logErrorToRenderer('Error starting Steam:', error.message);
-      }
-    });
-
-    // Give Steam a moment to start
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    logToRenderer('✓ Steam restarted successfully');
-    return true;
-  } catch (e) {
-    logErrorToRenderer('Error restarting Steam:', e.message);
-    return false;
-  }
-}
-
-async function modifySteamLaunchOptions(appId, loaderPath) {
-  logToRenderer('\n╔══════════════════════════════════════════════════════════╗');
-  logToRenderer('║  INSIDE modifySteamLaunchOptions FUNCTION               ║');
-  logToRenderer('╚══════════════════════════════════════════════════════════╝');
-  logToRenderer('Function called with:');
-  logToRenderer('  - AppID:', appId);
-  logToRenderer('  - Loader Path:', loaderPath);
-
-  try {
-    logToRenderer('\nStep 1: Finding Steam installation...');
-    const steamPath = findSteamPath();
-    logToRenderer('Steam Path found:', steamPath);
-
-    if (!steamPath) {
-      logErrorToRenderer('ERROR: Steam path is null/undefined!');
-      throw new Error('Steam installation not found. Please ensure Steam is installed. If Steam is installed in a custom location, the app may not be able to find it automatically.');
-    }
-
-    // Close Steam if it's running
-    logToRenderer('\n=== Step 2: Ensuring Steam is closed ===');
-    const steamWasClosed = await closeSteamAndWait(steamPath);
-    const needsSteamRestart = steamWasClosed;
-
-    if (steamWasClosed) {
-      logToRenderer('✓ Steam has been closed to prevent config overwrites\n');
-    } else {
-      logToRenderer('✓ Steam was not running\n');
-    }
-
-    const userDataPath = path.join(steamPath, 'userdata');
-
-    if (!fs.existsSync(userDataPath)) {
-      throw new Error('Steam userdata folder not found. Steam may not be configured properly.');
-    }
-
-    const users = fs.readdirSync(userDataPath);
-
-    if (users.length === 0) {
-      throw new Error('No Steam users found. Please ensure you have logged into Steam at least once.');
-    }
-
-    let modifiedCount = 0;
-    let foundAppId = false;
-    const modifiedUsers = [];
-
-    // Loop through ALL users and modify launch options for each one that has this game
-    for (const user of users) {
-      const configPath = path.join(userDataPath, user, 'config', 'localconfig.vdf');
-
-      logToRenderer(`\n=== Checking Steam user ${user} ===`);
-      logToRenderer(`Config path: ${configPath}`);
-
-      if (fs.existsSync(configPath)) {
-        logToRenderer(`✓ Config file exists`);
-        let content = fs.readFileSync(configPath, 'utf-8');
-
-        // Escape backslashes for the launch options path
-        const launchOptions = `\\"${loaderPath.replace(/\\/g, '\\\\')}\\" %command%`;
-        logToRenderer(`Launch options to set: ${launchOptions}`);
-
-        // Check if app ID exists in this config
-        logToRenderer(`Looking for AppID "${appId}" in config...`);
-        if (content.includes(`"${appId}"`)) {
-          logToRenderer(`✓ AppID "${appId}" found in config file`);
-          foundAppId = true;
-
-          // Extract the section around the AppID for debugging
-          const appIdIndex = content.indexOf(`"${appId}"`);
-          const sampleText = content.substring(Math.max(0, appIdIndex - 50), Math.min(content.length, appIdIndex + 200));
-          logToRenderer(`Context around AppID:\n${sampleText}\n`);
-
-          // Find the app section - look for the pattern: "appid"\n\t\t\t{
-          const appSectionRegex = new RegExp(`("${appId}"\\s*\\n\\s*\\{)`, 'g');
-
-          if (appSectionRegex.test(content)) {
-            logToRenderer(`✓ App section pattern matched`);
-
-            // Check if LaunchOptions already exists for this app
-            const launchOptionsPattern = new RegExp(
-              `"${appId}"\\s*\\n\\s*\\{[^}]*"LaunchOptions"\\s*"[^"]*"`,
-              's'
-            );
-
-            // Create a backup before modifying
-            const backupPath = configPath + '.backup';
-            fs.writeFileSync(backupPath, content, 'utf-8');
-            logToRenderer(`Created backup at: ${backupPath}`);
-
-            if (launchOptionsPattern.test(content)) {
-              logToRenderer(`Updating existing LaunchOptions...`);
-              // Update existing LaunchOptions
-              const replaceRegex = new RegExp(`("${appId}"\\s*\\n\\s*\\{[^}]*"LaunchOptions"\\s*")([^"]*)(")`,'s');
-              const oldContent = content;
-              content = content.replace(replaceRegex, `$1${launchOptions}$3`);
-
-              if (content !== oldContent) {
-                logToRenderer(`✓ Content was modified`);
-              } else {
-                logToRenderer(`⚠️ WARNING: Replace didn't change anything!`);
-              }
-            } else {
-              logToRenderer(`Adding new LaunchOptions entry...`);
-              // Add new LaunchOptions after the opening brace of the app section
-              const addRegex = new RegExp(`("${appId}"\\s*\\n\\s*\\{)`,'');
-              const oldContent = content;
-              content = content.replace(addRegex, `$1\n\t\t\t\t"LaunchOptions"\t\t"${launchOptions}"`);
-
-              if (content !== oldContent) {
-                logToRenderer(`✓ LaunchOptions entry added`);
-              } else {
-                logToRenderer(`⚠️ WARNING: Add didn't change anything!`);
-              }
-            }
-
-            fs.writeFileSync(configPath, content, 'utf-8');
-            logToRenderer(`✓ Config file written successfully`);
-
-            // Verify the write
-            const verifyContent = fs.readFileSync(configPath, 'utf-8');
-            if (verifyContent.includes(launchOptions)) {
-              logToRenderer(`✓ VERIFIED: Launch options are in the file`);
-            } else {
-              logToRenderer(`✗ ERROR: Launch options NOT found after writing!`);
-            }
-
-            modifiedCount++;
-            modifiedUsers.push(user);
-            logToRenderer(`✓ Launch options set for AppID ${appId} in Steam user ${user}`);
-          } else {
-            logToRenderer(`✗ App section regex did NOT match`);
-            logToRenderer(`Regex pattern: ("${appId}"\\s*\\n\\s*\\{)`);
-          }
-        } else {
-          logToRenderer(`✗ AppID "${appId}" NOT found in config file`);
-        }
-      } else {
-        logToRenderer(`✗ Config file does not exist`);
-      }
-    }
-
-    if (modifiedCount === 0) {
-      if (!foundAppId) {
-        throw new Error(`Game (AppID ${appId}) has not been launched in Steam yet. Please launch the game at least once, close it, then try applying the fix again. This creates the necessary Steam configuration entry.`);
-      } else {
-        throw new Error(`Could not modify launch options for AppID ${appId}. The game may need to be launched once to create its Steam configuration entry.`);
-      }
-    }
-
-    // Log summary
-    if (modifiedCount === 1) {
-      logToRenderer(`✓ Launch options successfully updated for 1 Steam user`);
-    } else {
-      logToRenderer(`✓ Launch options successfully updated for ${modifiedCount} Steam users: ${modifiedUsers.join(', ')}`);
-    }
-
-    if (needsSteamRestart) {
-      logToRenderer('\n⚠️ IMPORTANT: Please restart Steam for the changes to take effect!');
-    }
-
-    return { success: true, modifiedCount, modifiedUsers, needsSteamRestart };
-  } catch (error) {
-    logErrorToRenderer('Error modifying launch options:', error);
-    throw error; // Re-throw to preserve the error message
   }
 }
 
@@ -1577,7 +1126,7 @@ async function unfixGame(gameFolder, removeGoldberg = true, removeUnsteam = true
 // IPC handler for unfixing games
 ipcMain.handle('unfix-game', async (event, options) => {
   try {
-    const { appId, removeUnsteam, removeGoldberg, removeSteamless, autoRestartSteam } = options;
+    const { appId, removeUnsteam, removeGoldberg, removeSteamless } = options;
 
     // Step 1: Find Steam installation
     const steamPath = findSteamPath();
@@ -1621,30 +1170,11 @@ ipcMain.handle('unfix-game', async (event, options) => {
       }
     }
 
-    // Step 6: Close Steam if Unsteam is being removed
-    if (removeUnsteam) {
-      console.log('Closing Steam before removing Unsteam...');
-      await closeSteamAndWait(steamPath);
-    }
-
-    // Step 7: Remove Steam launch options (if Unsteam is being removed)
-    if (removeUnsteam) {
-      try {
-        const removed = await removeSteamLaunchOptions(appId);
-        if (removed) {
-          console.log('Steam launch options removed successfully');
-          removedItems.push('Removed Steam launch options');
-        }
-      } catch (error) {
-        console.warn('Failed to remove launch options:', error);
-      }
-    }
-
-    // Step 8: Unfix the game (remove Unsteam/Goldberg files based on selection)
+    // Step 6: Unfix the game (remove Unsteam/Goldberg files based on selection)
     const result = await unfixGame(gameFolder, removeGoldberg, removeUnsteam);
     removedItems.push(...result.removedItems);
 
-    // Step 9: Update or delete fix state file
+    // Step 7: Update or delete fix state file
     if (removeUnsteam && removeGoldberg && removeSteamless) {
       // All components removed, delete the state file
       deleteFixState(gameFolder);
@@ -1659,19 +1189,10 @@ ipcMain.handle('unfix-game', async (event, options) => {
       saveFixState(gameFolder, updatedState);
     }
 
-    // Step 10: Restart Steam if Unsteam was removed and auto-restart is enabled
-    if (removeUnsteam && autoRestartSteam) {
-      console.log('Restarting Steam...');
-      await restartSteam(steamPath);
-    } else if (removeUnsteam && !autoRestartSteam) {
-      console.log('Steam restart skipped (auto-restart disabled). Please restart Steam manually.');
-    }
-
     return {
       success: true,
       gameFolder: gameFolder,
-      removedItems: removedItems,
-      steamRestarted: removeUnsteam && autoRestartSteam
+      removedItems: removedItems
     };
   } catch (error) {
     console.error('Unfix error:', error);
@@ -1682,9 +1203,9 @@ ipcMain.handle('unfix-game', async (event, options) => {
 // Main IPC handler
 ipcMain.handle('install-globalfix', async (event, options) => {
   try {
-    const { appId, unsteamEnabled, goldbergEnabled, goldbergOptions, steamlessEnabled, steamId, username, autoRestartSteam } = options;
+    const { appId, unsteamEnabled, goldbergEnabled, goldbergOptions, steamlessEnabled, steamId, username } = options;
 
-    console.log('Install options:', { appId, unsteamEnabled, goldbergEnabled, steamlessEnabled, autoRestartSteam });
+    console.log('Install options:', { appId, unsteamEnabled, goldbergEnabled, steamlessEnabled });
 
     // Validate at least one tool is selected
     if (!unsteamEnabled && !goldbergEnabled && !steamlessEnabled) {
@@ -1751,10 +1272,6 @@ ipcMain.handle('install-globalfix', async (event, options) => {
     // Search for "UNSTEAM INSTALLATION" to find this section
     // ============================================================
     // Step 5: Install Unsteam (if enabled)
-    let launchOptionsSet = false;
-    let launchOptionsError = null;
-    let steamNeedsRestart = false;
-
     logToRenderer('\n========== STEP 5: UNSTEAM INSTALLATION ==========');
     logToRenderer('unsteamEnabled:', unsteamEnabled);
 
@@ -1841,27 +1358,6 @@ ipcMain.handle('install-globalfix', async (event, options) => {
         }
       }
 
-      // Modify Steam launch options to use unsteam_loader64.exe
-      const loaderPath = path.join(gameExeDir, 'unsteam_loader64.exe');
-
-      logToRenderer('\n==========================================');
-      logToRenderer('ATTEMPTING TO SET STEAM LAUNCH OPTIONS');
-      logToRenderer('==========================================');
-      logToRenderer('AppID:', appId);
-      logToRenderer('Loader Path:', loaderPath);
-      logToRenderer('About to call modifySteamLaunchOptions...\n');
-
-      try {
-        const result = await modifySteamLaunchOptions(appId, loaderPath);
-        launchOptionsSet = true;
-        steamNeedsRestart = result.needsSteamRestart || false;
-        logToRenderer(`\n✅ Steam launch options updated successfully for ${result.modifiedCount} user(s)`);
-      } catch (error) {
-        launchOptionsError = error.message;
-        logErrorToRenderer('\n❌ Failed to modify Steam launch options:', error);
-        logErrorToRenderer('Error stack:', error.stack);
-      }
-
       logToRenderer('✓ Unsteam installation complete!');
     } else {
       logToRenderer('✗ Unsteam is NOT enabled - skipping installation');
@@ -1869,16 +1365,6 @@ ipcMain.handle('install-globalfix', async (event, options) => {
     // ============================================================
     // UNSTEAM INSTALLATION - END
     // ============================================================
-
-    // Store Steam path for later restart (if needed)
-    let steamPathForRestart = null;
-    if (unsteamEnabled && steamNeedsRestart) {
-      try {
-        steamPathForRestart = findSteamPath();
-      } catch (e) {
-        console.warn('Could not get Steam path for restart:', e.message);
-      }
-    }
 
     // Step 6: Install Goldberg (if enabled)
     let goldbergResult = null;
@@ -1906,25 +1392,6 @@ ipcMain.handle('install-globalfix', async (event, options) => {
     };
     saveFixState(gameFolder, fixState);
 
-    // Step 8: Restart Steam if it was closed for Unsteam and auto-restart is enabled
-    let steamRestarted = false;
-    if (unsteamEnabled && steamNeedsRestart && steamPathForRestart && autoRestartSteam) {
-      logToRenderer('\n==========================================');
-      logToRenderer('RESTARTING STEAM');
-      logToRenderer('==========================================');
-      steamRestarted = await restartSteam(steamPathForRestart);
-      if (steamRestarted) {
-        logToRenderer('✅ Steam has been restarted - your game is ready to play!');
-      } else {
-        logToRenderer('⚠️ Please manually restart Steam to complete the setup');
-      }
-    } else if (unsteamEnabled && steamNeedsRestart && !autoRestartSteam) {
-      logToRenderer('\n==========================================');
-      logToRenderer('STEAM RESTART SKIPPED (Auto-restart disabled)');
-      logToRenderer('==========================================');
-      logToRenderer('⚠️ Please manually restart Steam to complete the setup');
-    }
-
     return {
       success: true,
       gameFolder: gameExeDir,
@@ -1934,10 +1401,6 @@ ipcMain.handle('install-globalfix', async (event, options) => {
         installed: true,
         loaderPath: path.join(gameExeDir, 'unsteam_loader64.exe')
       } : null,
-      launchOptionsSet: launchOptionsSet,
-      launchOptionsError: launchOptionsError,
-      steamNeedsRestart: steamNeedsRestart,
-      steamRestarted: steamRestarted,
       goldberg: goldbergResult ? {
         installed: true,
         steamApiPath: goldbergResult.steamApiPath,

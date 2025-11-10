@@ -16,7 +16,6 @@ const unsteamCheckbox = document.getElementById('unsteamCheckbox');
 const unsteamOptions = document.getElementById('unsteamOptions');
 const unsteamSteamIdInput = document.getElementById('unsteamSteamId');
 const unsteamUsernameInput = document.getElementById('unsteamUsername');
-const unsteamAutoRestartCheckbox = document.getElementById('unsteamAutoRestartCheckbox');
 
 // Goldberg options elements
 const goldbergCheckbox = document.getElementById('goldbergCheckbox');
@@ -558,8 +557,7 @@ async function handleInstall() {
     goldbergOptions,
     steamlessEnabled,
     steamId: unsteamSteamIdInput.value.trim() || null,
-    username: unsteamUsernameInput.value.trim() || null,
-    autoRestartSteam: unsteamAutoRestartCheckbox.checked
+    username: unsteamUsernameInput.value.trim() || null
   };
 
   // Disable inputs during installation
@@ -623,34 +621,6 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
   resultSection.classList.add('success');
   resultTitle.textContent = '✓ Fix Applied Successfully!';
 
-  // Add prominent Steam restart banner if needed
-  let steamRestartBanner = '';
-  if (result.steamRestarted) {
-    steamRestartBanner = `
-      <div style="background: #27ae60; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: bold; font-size: 1.1em;">
-        ✅ STEAM HAS BEEN RESTARTED - READY TO PLAY! ✅
-        <div style="font-size: 0.9em; margin-top: 8px; font-weight: normal;">
-          Launch your game from Steam and enjoy!
-        </div>
-      </div>
-    `;
-  } else if (result.steamNeedsRestart) {
-    steamRestartBanner = `
-      <div style="background: #ff5722; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: bold; font-size: 1.1em; animation: pulse 2s infinite;">
-        ⚠️ STEAM WAS CLOSED - PLEASE RESTART STEAM NOW! ⚠️
-        <div style="font-size: 0.9em; margin-top: 8px; font-weight: normal;">
-          The launch options have been applied. Start Steam to use them.
-        </div>
-      </div>
-      <style>
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.8; }
-        }
-      </style>
-    `;
-  }
-
   // Build component list
   const components = [];
   if (steamlessEnabled && result.steamless) components.push('Steamless DRM removal');
@@ -667,15 +637,7 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
   if (unsteamEnabled && result.unsteam) {
     nextSteps += '<li>Unsteam has been installed to your game folder</li>';
     nextSteps += '<li>The unsteam.ini file has been configured with your game settings</li>';
-
-    // Check if launch options were set successfully
-    if (result.launchOptionsSet) {
-      nextSteps += '<li>✅ Steam launch options have been configured automatically</li>';
-    } else if (result.launchOptionsError) {
-      nextSteps += '<li><strong style="color: #e74c3c;">⚠️ WARNING: Steam launch options could not be set automatically</strong></li>';
-      nextSteps += `<li style="color: #e74c3c; font-size: 0.9em;">Error: ${escapeHtml(result.launchOptionsError)}</li>`;
-      nextSteps += '<li style="font-weight: bold; color: #e74c3c;">Please set launch options manually (see instructions below)</li>';
-    }
+    nextSteps += '<li><strong style="color: #e74c3c;">⚠️ IMPORTANT: You must set the Steam launch option manually (see below)</strong></li>';
   }
 
   if (goldbergEnabled && result.goldberg) {
@@ -684,18 +646,6 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
     if (result.goldberg.achievementsCount > 0) {
       nextSteps += `<li>Downloaded ${result.goldberg.achievementsCount} achievements</li>`;
     }
-  }
-
-  // Show Steam restart status based on whether we closed and restarted Steam
-  if (result.steamRestarted) {
-    nextSteps += '<li><strong style="color: #27ae60; font-size: 1.1em;">✅ Steam has been automatically restarted - Your game is ready to play!</strong></li>';
-    nextSteps += '<li>Launch your game normally from Steam</li>';
-  } else if (result.steamNeedsRestart) {
-    nextSteps += '<li><strong style="color: #e74c3c; font-size: 1.1em;">⚠️ CRITICAL: Steam was closed to apply launch options - Please restart Steam now!</strong></li>';
-    nextSteps += '<li>After restarting Steam, launch your game normally</li>';
-  } else if (unsteamEnabled || goldbergEnabled) {
-    nextSteps += '<li><strong style="color: #e74c3c;">⚠️ IMPORTANT: Close Steam completely and reopen it</strong></li>';
-    nextSteps += '<li>After restarting Steam, launch your game normally</li>';
   }
 
   if (goldbergEnabled) {
@@ -707,36 +657,37 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
   let manualLaunchOptionsSection = '';
   if (unsteamEnabled && result.unsteam) {
     const launchOptionsCommand = `"${result.unsteam.loaderPath}" %command%`;
-    const statusColor = result.launchOptionsSet ? '#27ae60' : '#e74c3c';
-    const statusIcon = result.launchOptionsSet ? '✅' : '⚠️';
-    const statusText = result.launchOptionsSet ? 'Configured Automatically' : 'Manual Setup Required';
 
     manualLaunchOptionsSection = `
-      <div class="result-details-item" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
-        <strong style="color: ${statusColor};">${statusIcon} Steam Launch Options - ${statusText}</strong>
-        <p style="margin: 10px 0; color: #555; font-size: 0.95em;">
-          ${result.launchOptionsSet
-            ? 'The launch options have been set automatically. You can verify or manually set them using the command below:'
-            : 'Automatic setup failed. Please manually set the launch options using the command below:'}
-        </p>
-
-        <div style="background: #f8f9fa; border: 2px solid #667eea; border-radius: 8px; padding: 15px; margin: 10px 0;">
-          <strong style="color: #667eea;">Launch Options Command:</strong>
-          <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 10px; margin: 10px 0; font-family: 'Courier New', monospace; font-size: 0.9em; word-break: break-all; user-select: all;">
-            ${escapeHtml(launchOptionsCommand)}
-          </div>
+      <div class="result-details-item" style="margin-top: 20px; padding: 20px; background: #fff3cd; border: 3px solid #ffc107; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 15px;">
+          <strong style="color: #856404; font-size: 1.2em;">⚠️ FINAL STEP: SET STEAM LAUNCH OPTION ⚠️</strong>
         </div>
 
-        <div style="background: #e8f4f8; border-left: 4px solid #3498db; padding: 12px; margin: 10px 0; border-radius: 4px;">
-          <strong style="color: #2980b9;">How to Set Launch Options Manually:</strong>
-          <ol style="margin: 8px 0 0 20px; line-height: 1.8; color: #34495e;">
+        <p style="margin: 10px 0; color: #856404; font-size: 1em; text-align: center;">
+          Copy the command below and paste it into the game's Steam Launch Options
+        </p>
+
+        <div style="background: #f8f9fa; border: 3px solid #667eea; border-radius: 8px; padding: 15px; margin: 15px 0;">
+          <strong style="color: #667eea; font-size: 1.1em;">Launch Options Command:</strong>
+          <div style="background: white; border: 2px solid #667eea; border-radius: 4px; padding: 15px; margin: 10px 0; font-family: 'Courier New', monospace; font-size: 1.05em; word-break: break-all; user-select: all; text-align: center; font-weight: bold;">
+            ${escapeHtml(launchOptionsCommand)}
+          </div>
+          <p style="margin: 10px 0 0 0; color: #555; font-size: 0.9em; text-align: center;">
+            <strong>💡 Tip:</strong> Triple-click to select all, then Ctrl+C to copy
+          </p>
+        </div>
+
+        <div style="background: #e8f4f8; border-left: 4px solid #3498db; padding: 15px; margin: 10px 0; border-radius: 4px;">
+          <strong style="color: #2980b9; font-size: 1.05em;">📋 How to Set Launch Options:</strong>
+          <ol style="margin: 8px 0 0 20px; line-height: 2; color: #34495e; font-size: 0.95em;">
             <li>Open <strong>Steam</strong></li>
             <li>Go to your <strong>Library</strong></li>
             <li><strong>Right-click</strong> on the game</li>
             <li>Select <strong>Properties</strong></li>
-            <li>Find the <strong>Launch Options</strong> field at the bottom</li>
-            <li>Select and copy the command above, then paste it into the Launch Options field</li>
-            <li>Close the properties window</li>
+            <li>Find the <strong>Launch Options</strong> box (usually at the bottom)</li>
+            <li><strong>Paste</strong> the command from above into the Launch Options box</li>
+            <li>Close the properties window and <strong>launch your game!</strong></li>
           </ol>
         </div>
       </div>
@@ -744,7 +695,6 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
   }
 
   resultDetails.innerHTML = `
-    ${steamRestartBanner}
     <div class="result-details-item">
       <strong>Game Folder:</strong> ${escapeHtml(result.gameFolder)}
     </div>
@@ -756,13 +706,13 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
         <strong>Components Installed:</strong> ${components.join(', ')}
       </div>
     ` : ''}
+    ${manualLaunchOptionsSection}
     <div class="result-details-item" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
-      <strong>Next Steps:</strong>
+      <strong>What Was Installed:</strong>
       <ol style="margin-left: 20px; margin-top: 10px; line-height: 1.6;">
         ${nextSteps}
       </ol>
     </div>
-    ${manualLaunchOptionsSection}
   `;
 }
 
@@ -814,7 +764,7 @@ async function handleUnfix() {
   if (removeSteamless) components.push('Steamless');
 
   const componentsList = components.join(', ');
-  const confirmMessage = `This will remove ${componentsList} modifications from the game.${removeUnsteam ? '\n\nSteam will be automatically closed and restarted.' : ''}\n\nContinue?`;
+  const confirmMessage = `This will remove ${componentsList} modifications from the game.\n\nContinue?`;
 
   // Confirm with user
   if (!confirm(confirmMessage)) {
@@ -842,8 +792,7 @@ async function handleUnfix() {
       appId,
       removeUnsteam,
       removeGoldberg,
-      removeSteamless,
-      autoRestartSteam: unsteamAutoRestartCheckbox.checked
+      removeSteamless
     };
     const result = await window.electronAPI.unfixGame(options);
 
@@ -878,14 +827,16 @@ function showUnfixSuccess(result, unsteamWasRemoved) {
     ? `<ul style="margin-left: 20px; margin-top: 10px; line-height: 1.6;">${result.removedItems.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
     : '<p>No modifications were found to remove.</p>';
 
-  // Build the Steam restart message based on actual restart status
-  let steamMessage;
-  if (result.steamRestarted) {
-    steamMessage = '<p><strong style="color: #27ae60;">✓ Steam has been automatically closed and restarted</strong></p><p>The changes have been applied. You can now launch the game normally.</p>';
-  } else if (unsteamWasRemoved) {
-    steamMessage = '<p><strong style="color: #ff9800;">⚠️ Steam was closed but auto-restart is disabled</strong></p><p>Please restart Steam manually to complete the process.</p>';
-  } else {
-    steamMessage = '<p>The selected components have been removed. You can now launch the game normally.</p>';
+  let launchOptionsReminder = '';
+  if (unsteamWasRemoved) {
+    launchOptionsReminder = `
+      <div style="margin-top: 15px; padding: 15px; background: #e8f4f8; border-left: 4px solid #3498db; border-radius: 4px;">
+        <strong style="color: #2980b9;">💡 Don't forget:</strong>
+        <p style="margin: 5px 0 0 0; color: #34495e;">
+          Remove the Unsteam launch option from the game's Steam properties if you added it.
+        </p>
+      </div>
+    `;
   }
 
   resultDetails.innerHTML = `
@@ -897,8 +848,9 @@ function showUnfixSuccess(result, unsteamWasRemoved) {
       ${removedItemsHtml}
     </div>
     <div class="result-details-item" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
-      <p>✓ The game has been restored.</p>
-      ${steamMessage}
+      <p>✓ The game has been restored to its original state.</p>
+      <p>You can now launch the game normally from Steam.</p>
+      ${launchOptionsReminder}
     </div>
   `;
 }

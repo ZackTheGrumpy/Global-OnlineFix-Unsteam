@@ -124,16 +124,10 @@
               <li>Enables LAN play without Steam connection</li>
               <li>Configurable Steam ID and username</li>
             </ul>
-            <div style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-left: 3px solid #2196f3; border-radius: 4px;">
-              <strong style="color: #1565c0;">🔄 Automatic Steam Management:</strong>
-              <p style="margin: 5px 0 0 0; color: #1565c0; font-size: 0.9em;">
-                Steam will automatically close, apply the fix, and restart for changes to take effect properly.
-              </p>
-            </div>
             <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-left: 3px solid #ffc107; border-radius: 4px;">
               <strong style="color: #856404;">⚠️ Important:</strong>
               <p style="margin: 5px 0 0 0; color: #856404; font-size: 0.9em;">
-                You must launch the game in Steam at least once before applying Unsteam. This creates the necessary Steam configuration files for automatic launch options setup.
+                After installation, you'll need to manually add a launch option in the game's Steam properties. The command will be provided after installation.
               </p>
             </div>
           </div>
@@ -154,14 +148,7 @@
               placeholder="Leave blank for default"
               autocomplete="off"
             >
-
-            <div class="checkbox-container" style="margin-top: 15px;">
-              <input type="checkbox" id="unsteamAutoRestartCheckbox" checked>
-              <label for="unsteamAutoRestartCheckbox" class="checkbox-label" style="font-size: 0.95em;">
-                Auto-restart Steam after applying fix
-              </label>
-            </div>
-            <small class="input-help">Uncheck if you're fixing multiple games to avoid repeated restarts</small>
+            <small class="input-help">Leave fields blank to use defaults from unsteam.ini</small>
           </div>
 
           <!-- Goldberg Checkbox -->
