@@ -1,0 +1,434 @@
+[
+  {
+    "name": "Granny Escape Together",
+    "appId": "0",
+    "unsteam": {
+      "status": "works",
+      "notes": "Online multiplayer confirmed working"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Paint the Town Red",
+    "appId": "337320",
+    "unsteam": {
+      "status": "works",
+      "notes": "LAN play confirmed. Online play works with Steam servers."
+    },
+    "goldberg": {
+      "status": "works",
+      "notes": "Achievements work. Friends list functional."
+    },
+    "steamless": {
+      "status": "not-needed",
+      "notes": "Game does not have SteamStub protection."
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Mimesis",
+    "appId": "0",
+    "unsteam": {
+      "status": "works",
+      "notes": "Multiplayer working"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Hearts of Iron IV",
+    "appId": "394360",
+    "unsteam": {
+      "status": "works",
+      "notes": "Multiplayer confirmed working"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "South Park: Snow Day",
+    "appId": "2599080",
+    "unsteam": {
+      "status": "works",
+      "notes": "Online functionality confirmed"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Escape Simulator",
+    "appId": "1435790",
+    "unsteam": {
+      "status": "works",
+      "notes": "Multiplayer works perfectly"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Stellaris",
+    "appId": "281990",
+    "unsteam": {
+      "status": "works",
+      "notes": "Multiplayer confirmed working"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Swapmeat",
+    "appId": "0",
+    "unsteam": {
+      "status": "works",
+      "notes": "Works as expected"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Europa Universalis IV",
+    "appId": "236850",
+    "unsteam": {
+      "status": "works",
+      "notes": "Multiplayer confirmed working"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Veins",
+    "appId": "0",
+    "unsteam": {
+      "status": "works",
+      "notes": "Online features working"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Tavern Keeper",
+    "appId": "0",
+    "unsteam": {
+      "status": "works",
+      "notes": "Works correctly"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Streets of Rage 4",
+    "appId": "985890",
+    "unsteam": {
+      "status": "works",
+      "notes": "Multiplayer working"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Inzoi",
+    "appId": "0",
+    "unsteam": {
+      "status": "fails",
+      "notes": "Does not work with current version"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Sons of the Forest",
+    "appId": "1326470",
+    "unsteam": {
+      "status": "fails",
+      "notes": "Incompatible with Unsteam"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "PEAK",
+    "appId": "0",
+    "unsteam": {
+      "status": "fails",
+      "notes": "Not working"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "FBC: Fireworks",
+    "appId": "0",
+    "unsteam": {
+      "status": "fails",
+      "notes": "Does not work"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "For the King 2",
+    "appId": "1676840",
+    "unsteam": {
+      "status": "fails",
+      "notes": "Not compatible"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "American Truck Simulator",
+    "appId": "270880",
+    "unsteam": {
+      "status": "fails",
+      "notes": "Multiplayer not working with Unsteam"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Grounded",
+    "appId": "962130",
+    "unsteam": {
+      "status": "fails",
+      "notes": "Does not work"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Dying Light",
+    "appId": "239140",
+    "unsteam": {
+      "status": "fails",
+      "notes": "Incompatible"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Warhammer: Darktide",
+    "appId": "1361210",
+    "unsteam": {
+      "status": "fails",
+      "notes": "Not working with Unsteam"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Warhammer 40,000: Rogue Trader",
+    "appId": "2186680",
+    "unsteam": {
+      "status": "fails",
+      "notes": "Not compatible"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Abiotic Factor",
+    "appId": "427410",
+    "unsteam": {
+      "status": "fails",
+      "notes": "Does not work"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  },
+  {
+    "name": "Phasmophobia",
+    "appId": "739630",
+    "unsteam": {
+      "status": "fails",
+      "notes": "Not working"
+    },
+    "goldberg": {
+      "status": "untested",
+      "notes": ""
+    },
+    "steamless": {
+      "status": "untested",
+      "notes": ""
+    },
+    "lastTested": "2025-11-10",
+    "testedBy": "ShayneVi"
+  }
+]

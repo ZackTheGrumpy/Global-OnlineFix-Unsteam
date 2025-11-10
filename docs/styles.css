@@ -342,6 +342,124 @@ body {
     transform: translateX(4px);
 }
 
+/* Enhanced App Cards */
+.app-card-featured {
+    grid-column: span 2;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    border: 2px solid var(--primary);
+}
+
+.app-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.app-badge {
+    position: absolute;
+    top: -0.5rem;
+    right: 0;
+    background: var(--gradient-primary);
+    color: white;
+    padding: 0.3rem 1rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.app-features {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    border: 1px solid var(--border);
+}
+
+.app-features h4 {
+    color: var(--primary);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.app-features ul {
+    list-style: none;
+    padding: 0;
+}
+
+.app-features li {
+    padding: 0.5rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+    color: var(--text-light);
+    line-height: 1.6;
+}
+
+.app-features li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--primary);
+    font-weight: bold;
+}
+
+.app-tech {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 8px;
+}
+
+.app-tech strong {
+    color: var(--text-dark);
+    font-size: 0.9rem;
+}
+
+.tech-tag {
+    background: var(--primary);
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.app-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.app-actions .btn {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+}
+
+/* Responsive adjustments for featured cards */
+@media (max-width: 768px) {
+    .app-card-featured {
+        grid-column: span 1;
+    }
+
+    .app-actions {
+        flex-direction: column;
+    }
+
+    .app-badge {
+        position: static;
+        display: inline-block;
+        margin-left: auto;
+    }
+}
+
 /* Compatibility Section */
 .compatibility-section {
     padding: 100px 0;

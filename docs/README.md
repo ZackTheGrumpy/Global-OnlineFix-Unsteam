@@ -2,6 +2,32 @@
 
 This is a professional portfolio website showcasing gaming tools and utilities.
 
+## ⚡ Quick Start: Update Compatibility List
+
+**To add or update games in the compatibility list:**
+
+1. Open `docs/compatibility-data.json`
+2. Add your game using this template:
+
+```json
+{
+  "name": "Your Game Name",
+  "appId": "12345",
+  "unsteam": { "status": "works", "notes": "Brief note" },
+  "goldberg": { "status": "untested", "notes": "" },
+  "steamless": { "status": "untested", "notes": "" },
+  "lastTested": "2025-11-10",
+  "testedBy": "YourName"
+}
+```
+
+3. **Status options**: `works`, `fails`, `partial`, `not-needed`, `untested`
+4. Save and commit!
+
+That's it! The website updates automatically. 🎉
+
+---
+
 ## 🌐 Live Website
 
 To publish this website using GitHub Pages:
