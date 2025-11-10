@@ -1651,6 +1651,7 @@ ipcMain.handle('install-globalfix', async (event, options) => {
     // Step 5: Install Unsteam (if enabled)
     let launchOptionsSet = false;
     let launchOptionsError = null;
+    let steamNeedsRestart = false;
 
     logToRenderer('\n========== STEP 5: UNSTEAM INSTALLATION ==========');
     logToRenderer('unsteamEnabled:', unsteamEnabled);
@@ -1748,7 +1749,6 @@ ipcMain.handle('install-globalfix', async (event, options) => {
       logToRenderer('Loader Path:', loaderPath);
       logToRenderer('About to call modifySteamLaunchOptions...\n');
 
-      let steamNeedsRestart = false;
       try {
         const result = await modifySteamLaunchOptions(appId, loaderPath);
         launchOptionsSet = true;
