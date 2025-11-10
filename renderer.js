@@ -723,12 +723,6 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
           <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 10px; margin: 10px 0; font-family: 'Courier New', monospace; font-size: 0.9em; word-break: break-all; user-select: all;">
             ${escapeHtml(launchOptionsCommand)}
           </div>
-          <button onclick="navigator.clipboard.writeText('${launchOptionsCommand.replace(/'/g, "\\'")}').then(() => alert('✅ Launch options copied to clipboard!'))"
-                  onmouseover="this.style.background='#5568d3'"
-                  onmouseout="this.style.background='#667eea'"
-                  style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 5px; transition: background 0.2s;">
-            📋 Copy to Clipboard
-          </button>
         </div>
 
         <div style="background: #e8f4f8; border-left: 4px solid #3498db; padding: 12px; margin: 10px 0; border-radius: 4px;">
@@ -739,7 +733,7 @@ function showSuccess(result, unsteamEnabled, goldbergEnabled, steamlessEnabled) 
             <li><strong>Right-click</strong> on the game</li>
             <li>Select <strong>Properties</strong></li>
             <li>Find the <strong>Launch Options</strong> field at the bottom</li>
-            <li>Paste the command above (or click Copy button)</li>
+            <li>Select and copy the command above, then paste it into the Launch Options field</li>
             <li>Close the properties window</li>
           </ol>
         </div>

@@ -1529,7 +1529,7 @@ ipcMain.handle('unfix-game', async (event, options) => {
     // Step 6: Close Steam if Unsteam is being removed
     if (removeUnsteam) {
       console.log('Closing Steam before removing Unsteam...');
-      await closeSteam();
+      await closeSteamAndWait(steamPath);
     }
 
     // Step 7: Remove Steam launch options (if Unsteam is being removed)
