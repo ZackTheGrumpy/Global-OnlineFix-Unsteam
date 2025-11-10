@@ -16,6 +16,7 @@ const unsteamCheckbox = document.getElementById('unsteamCheckbox');
 const unsteamOptions = document.getElementById('unsteamOptions');
 const unsteamSteamIdInput = document.getElementById('unsteamSteamId');
 const unsteamUsernameInput = document.getElementById('unsteamUsername');
+const unsteamAutoRestartCheckbox = document.getElementById('unsteamAutoRestartCheckbox');
 
 // Goldberg options elements
 const goldbergCheckbox = document.getElementById('goldbergCheckbox');
@@ -557,7 +558,8 @@ async function handleInstall() {
     goldbergOptions,
     steamlessEnabled,
     steamId: unsteamSteamIdInput.value.trim() || null,
-    username: unsteamUsernameInput.value.trim() || null
+    username: unsteamUsernameInput.value.trim() || null,
+    autoRestartSteam: unsteamAutoRestartCheckbox.checked
   };
 
   // Disable inputs during installation
@@ -840,7 +842,8 @@ async function handleUnfix() {
       appId,
       removeUnsteam,
       removeGoldberg,
-      removeSteamless
+      removeSteamless,
+      autoRestartSteam: unsteamAutoRestartCheckbox.checked
     };
     const result = await window.electronAPI.unfixGame(options);
 
@@ -875,10 +878,15 @@ function showUnfixSuccess(result, unsteamWasRemoved) {
     ? `<ul style="margin-left: 20px; margin-top: 10px; line-height: 1.6;">${result.removedItems.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
     : '<p>No modifications were found to remove.</p>';
 
-  // Build the Steam restart message
-  const steamMessage = unsteamWasRemoved
-    ? '<p><strong style="color: #27ae60;">✓ Steam has been automatically closed and restarted</strong></p><p>The changes have been applied. You can now launch the game normally.</p>'
-    : '<p>The selected components have been removed. You can now launch the game normally.</p>';
+  // Build the Steam restart message based on actual restart status
+  let steamMessage;
+  if (result.steamRestarted) {
+    steamMessage = '<p><strong style="color: #27ae60;">✓ Steam has been automatically closed and restarted</strong></p><p>The changes have been applied. You can now launch the game normally.</p>';
+  } else if (unsteamWasRemoved) {
+    steamMessage = '<p><strong style="color: #ff9800;">⚠️ Steam was closed but auto-restart is disabled</strong></p><p>Please restart Steam manually to complete the process.</p>';
+  } else {
+    steamMessage = '<p>The selected components have been removed. You can now launch the game normally.</p>';
+  }
 
   resultDetails.innerHTML = `
     <div class="result-details-item">

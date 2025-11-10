@@ -154,7 +154,14 @@
               placeholder="Leave blank for default"
               autocomplete="off"
             >
-            <small class="input-help">Leave fields blank to use defaults from unsteam.ini</small>
+
+            <div class="checkbox-container" style="margin-top: 15px;">
+              <input type="checkbox" id="unsteamAutoRestartCheckbox" checked>
+              <label for="unsteamAutoRestartCheckbox" class="checkbox-label" style="font-size: 0.95em;">
+                Auto-restart Steam after applying fix
+              </label>
+            </div>
+            <small class="input-help">Uncheck if you're fixing multiple games to avoid repeated restarts</small>
           </div>
 
           <!-- Goldberg Checkbox -->

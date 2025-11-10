@@ -49,7 +49,7 @@ function createWindow() {
       contextIsolation: true
     },
     autoHideMenuBar: true,
-    resizable: false,
+    resizable: true,
     icon: path.join(__dirname, '4310811.png')
   });
 
@@ -253,29 +253,16 @@ async function downloadGlobalFix(destPath) {
     const url = 'https://github.com/ShayneVi/Global-OnlineFix-Unsteam/raw/refs/heads/main/GlobalFix.zip';
     const file = fs.createWriteStream(destPath);
 
-    // Timeout after 30 seconds
-    const timeout = setTimeout(() => {
-      file.close();
-      try {
-        fs.unlinkSync(destPath);
-      } catch (e) {
-        // Ignore
-      }
-      reject(new Error('Download timed out after 30 seconds. Please check your internet connection.'));
-    }, 30000);
-
     https.get(url, (response) => {
       if (response.statusCode === 302 || response.statusCode === 301) {
         // Follow redirect
         https.get(response.headers.location, (redirectResponse) => {
           redirectResponse.pipe(file);
           file.on('finish', () => {
-            clearTimeout(timeout);
             file.close();
             resolve();
           });
         }).on('error', (err) => {
-          clearTimeout(timeout);
           file.close();
           try {
             fs.unlinkSync(destPath);
@@ -287,13 +274,11 @@ async function downloadGlobalFix(destPath) {
       } else {
         response.pipe(file);
         file.on('finish', () => {
-          clearTimeout(timeout);
           file.close();
           resolve();
         });
       }
     }).on('error', (err) => {
-      clearTimeout(timeout);
       file.close();
       try {
         fs.unlinkSync(destPath);
@@ -321,17 +306,10 @@ async function extractZip(zipPath, destPath) {
   });
 
   return new Promise((resolve, reject) => {
-    // Timeout after 60 seconds
-    const timeout = setTimeout(() => {
-      reject(new Error('Extraction timed out after 60 seconds'));
-    }, 60000);
-
     seven.on('end', () => {
-      clearTimeout(timeout);
       resolve();
     });
     seven.on('error', (err) => {
-      clearTimeout(timeout);
       reject(err);
     });
   });
@@ -534,8 +512,7 @@ async function closeSteamAndWait(steamPath) {
     let tasklistOutput;
     try {
       tasklistOutput = execSync('tasklist /FI "IMAGENAME eq steam.exe" /NH', {
-        encoding: 'utf-8',
-        timeout: 5000 // 5 second timeout
+        encoding: 'utf-8'
       });
     } catch (e) {
       logErrorToRenderer('Failed to check if Steam is running:', e.message);
@@ -553,8 +530,7 @@ async function closeSteamAndWait(steamPath) {
     // Close Steam gracefully first
     try {
       execSync('taskkill /IM steam.exe', {
-        encoding: 'utf-8',
-        timeout: 5000
+        encoding: 'utf-8'
       });
       logToRenderer('   Sent graceful shutdown signal to Steam...');
     } catch (e) {
@@ -573,8 +549,7 @@ async function closeSteamAndWait(steamPath) {
 
       try {
         const checkOutput = execSync('tasklist /FI "IMAGENAME eq steam.exe" /NH', {
-          encoding: 'utf-8',
-          timeout: 3000
+          encoding: 'utf-8'
         });
         if (!checkOutput.toLowerCase().includes('steam.exe')) {
           logToRenderer('✓ Steam process has exited');
@@ -593,8 +568,7 @@ async function closeSteamAndWait(steamPath) {
       logToRenderer('⚠️ Steam did not close gracefully, forcing shutdown...');
       try {
         execSync('taskkill /F /IM steam.exe', {
-          encoding: 'utf-8',
-          timeout: 5000
+          encoding: 'utf-8'
         });
         logToRenderer('✓ Forced Steam to close');
 
@@ -604,8 +578,7 @@ async function closeSteamAndWait(steamPath) {
         // Verify Steam is actually closed
         try {
           const verifyOutput = execSync('tasklist /FI "IMAGENAME eq steam.exe" /NH', {
-            encoding: 'utf-8',
-            timeout: 3000
+            encoding: 'utf-8'
           });
           if (verifyOutput.toLowerCase().includes('steam.exe')) {
             logErrorToRenderer('✗ ERROR: Steam is still running even after force kill!');
@@ -625,8 +598,7 @@ async function closeSteamAndWait(steamPath) {
         // If taskkill failed, Steam might already be closed - verify
         try {
           const finalCheck = execSync('tasklist /FI "IMAGENAME eq steam.exe" /NH', {
-            encoding: 'utf-8',
-            timeout: 3000
+            encoding: 'utf-8'
           });
           if (finalCheck.toLowerCase().includes('steam.exe')) {
             logErrorToRenderer('✗ ERROR: Failed to close Steam');
@@ -1605,7 +1577,7 @@ async function unfixGame(gameFolder, removeGoldberg = true, removeUnsteam = true
 // IPC handler for unfixing games
 ipcMain.handle('unfix-game', async (event, options) => {
   try {
-    const { appId, removeUnsteam, removeGoldberg, removeSteamless } = options;
+    const { appId, removeUnsteam, removeGoldberg, removeSteamless, autoRestartSteam } = options;
 
     // Step 1: Find Steam installation
     const steamPath = findSteamPath();
@@ -1687,16 +1659,19 @@ ipcMain.handle('unfix-game', async (event, options) => {
       saveFixState(gameFolder, updatedState);
     }
 
-    // Step 10: Restart Steam if Unsteam was removed
-    if (removeUnsteam) {
+    // Step 10: Restart Steam if Unsteam was removed and auto-restart is enabled
+    if (removeUnsteam && autoRestartSteam) {
       console.log('Restarting Steam...');
       await restartSteam(steamPath);
+    } else if (removeUnsteam && !autoRestartSteam) {
+      console.log('Steam restart skipped (auto-restart disabled). Please restart Steam manually.');
     }
 
     return {
       success: true,
       gameFolder: gameFolder,
-      removedItems: removedItems
+      removedItems: removedItems,
+      steamRestarted: removeUnsteam && autoRestartSteam
     };
   } catch (error) {
     console.error('Unfix error:', error);
@@ -1707,9 +1682,9 @@ ipcMain.handle('unfix-game', async (event, options) => {
 // Main IPC handler
 ipcMain.handle('install-globalfix', async (event, options) => {
   try {
-    const { appId, unsteamEnabled, goldbergEnabled, goldbergOptions, steamlessEnabled, steamId, username } = options;
+    const { appId, unsteamEnabled, goldbergEnabled, goldbergOptions, steamlessEnabled, steamId, username, autoRestartSteam } = options;
 
-    console.log('Install options:', { appId, unsteamEnabled, goldbergEnabled, steamlessEnabled });
+    console.log('Install options:', { appId, unsteamEnabled, goldbergEnabled, steamlessEnabled, autoRestartSteam });
 
     // Validate at least one tool is selected
     if (!unsteamEnabled && !goldbergEnabled && !steamlessEnabled) {
@@ -1931,9 +1906,9 @@ ipcMain.handle('install-globalfix', async (event, options) => {
     };
     saveFixState(gameFolder, fixState);
 
-    // Step 8: Restart Steam if it was closed for Unsteam
+    // Step 8: Restart Steam if it was closed for Unsteam and auto-restart is enabled
     let steamRestarted = false;
-    if (unsteamEnabled && steamNeedsRestart && steamPathForRestart) {
+    if (unsteamEnabled && steamNeedsRestart && steamPathForRestart && autoRestartSteam) {
       logToRenderer('\n==========================================');
       logToRenderer('RESTARTING STEAM');
       logToRenderer('==========================================');
@@ -1943,6 +1918,11 @@ ipcMain.handle('install-globalfix', async (event, options) => {
       } else {
         logToRenderer('⚠️ Please manually restart Steam to complete the setup');
       }
+    } else if (unsteamEnabled && steamNeedsRestart && !autoRestartSteam) {
+      logToRenderer('\n==========================================');
+      logToRenderer('STEAM RESTART SKIPPED (Auto-restart disabled)');
+      logToRenderer('==========================================');
+      logToRenderer('⚠️ Please manually restart Steam to complete the setup');
     }
 
     return {
