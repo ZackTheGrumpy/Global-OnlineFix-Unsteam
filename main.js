@@ -499,8 +499,13 @@ async function closeSteamAndWait(steamPath) {
     logToRenderer('🔄 Closing Steam to apply configuration changes...');
     logToRenderer('   Steam must fully shut down and save its config before we can modify it.');
 
-    // Close Steam gracefully
-    execSync('taskkill /IM steam.exe', { encoding: 'utf-8' });
+    // Close Steam gracefully first
+    try {
+      execSync('taskkill /IM steam.exe', { encoding: 'utf-8' });
+      logToRenderer('   Sent graceful shutdown signal to Steam...');
+    } catch (e) {
+      // Ignore errors - Steam might already be closed
+    }
 
     // Wait for Steam to fully close (check every 500ms, max 10 seconds)
     let attempts = 0;
@@ -517,9 +522,33 @@ async function closeSteamAndWait(steamPath) {
       attempts++;
     }
 
+    // If graceful shutdown didn't work, force kill Steam
     if (attempts >= maxAttempts) {
-      logToRenderer('⚠️ Steam did not close within 10 seconds');
-      return true; // We tried to close it
+      logToRenderer('⚠️ Steam did not close gracefully, forcing shutdown...');
+      try {
+        execSync('taskkill /F /IM steam.exe', { encoding: 'utf-8' });
+        logToRenderer('✓ Forced Steam to close');
+
+        // Wait a bit more for force kill to complete
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Verify Steam is actually closed
+        const verifyOutput = execSync('tasklist /FI "IMAGENAME eq steam.exe" /NH', { encoding: 'utf-8' });
+        if (verifyOutput.toLowerCase().includes('steam.exe')) {
+          logErrorToRenderer('✗ ERROR: Steam is still running even after force kill!');
+          throw new Error('Could not close Steam. Please close Steam manually and try again.');
+        }
+      } catch (killError) {
+        if (killError.message.includes('Could not close Steam')) {
+          throw killError;
+        }
+        // If taskkill failed, Steam might already be closed - verify
+        const finalCheck = execSync('tasklist /FI "IMAGENAME eq steam.exe" /NH', { encoding: 'utf-8' });
+        if (finalCheck.toLowerCase().includes('steam.exe')) {
+          logErrorToRenderer('✗ ERROR: Failed to close Steam');
+          throw new Error('Could not close Steam. Please close Steam manually and try again.');
+        }
+      }
     }
 
     // CRITICAL: Wait for Steam's config files to finish being written
