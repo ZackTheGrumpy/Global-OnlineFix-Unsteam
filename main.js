@@ -1677,6 +1677,10 @@ ipcMain.handle('install-globalfix', async (event, options) => {
       }
     }
 
+    // ============================================================
+    // UNSTEAM INSTALLATION - START
+    // Search for "UNSTEAM INSTALLATION" to find this section
+    // ============================================================
     // Step 5: Install Unsteam (if enabled)
     let launchOptionsSet = false;
     let launchOptionsError = null;
@@ -1793,6 +1797,9 @@ ipcMain.handle('install-globalfix', async (event, options) => {
     } else {
       logToRenderer('✗ Unsteam is NOT enabled - skipping installation');
     }
+    // ============================================================
+    // UNSTEAM INSTALLATION - END
+    // ============================================================
 
     // Store Steam path for later restart (if needed)
     let steamPathForRestart = null;
