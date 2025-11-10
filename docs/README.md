@@ -13,15 +13,13 @@ This is a professional portfolio website showcasing gaming tools and utilities.
 {
   "name": "Your Game Name",
   "appId": "12345",
-  "unsteam": { "status": "works", "notes": "Brief note" },
-  "goldberg": { "status": "untested", "notes": "" },
-  "steamless": { "status": "untested", "notes": "" },
-  "lastTested": "2025-11-10",
-  "testedBy": "YourName"
+  "status": "works",
+  "notes": "Brief note about compatibility",
+  "lastTested": "2025-11-10"
 }
 ```
 
-3. **Status options**: `works`, `fails`, `partial`, `not-needed`, `untested`
+3. **Status options**: `works`, `fails`, `untested`
 4. Save and commit!
 
 That's it! The website updates automatically. 🎉
@@ -65,36 +63,23 @@ docs/
 
 ### Option 1: JSON Format (Recommended)
 
-Create a file named `compatibility-data.json` in the `docs/` folder:
+The file `compatibility-data.json` is already created in the `docs/` folder with the Unsteam compatibility data:
 
 ```json
 [
   {
     "name": "Game Name",
     "appId": "123456",
-    "unsteam": {
-      "status": "works",
-      "notes": "Optional notes"
-    },
-    "goldberg": {
-      "status": "works",
-      "notes": "Optional notes"
-    },
-    "steamless": {
-      "status": "not-needed",
-      "notes": "Optional notes"
-    },
-    "lastTested": "2025-11-09",
-    "testedBy": "community"
+    "status": "works",
+    "notes": "Optional notes about compatibility",
+    "lastTested": "2025-11-10"
   }
 ]
 ```
 
 **Status Options:**
-- `works` - Fully compatible
-- `partial` - Some features may not work
-- `not-needed` - Tool not required for this game
-- `fails` - Does not work
+- `works` - Fully compatible with Unsteam
+- `fails` - Does not work with Unsteam
 - `untested` - Not yet verified
 
 ### Option 2: XML Format
@@ -107,24 +92,14 @@ Create a file named `compatibility-data.xml`:
   <game>
     <name>Game Name</name>
     <appId>123456</appId>
-    <unsteam>
-      <status>works</status>
-      <notes>Optional notes</notes>
-    </unsteam>
-    <goldberg>
-      <status>works</status>
-      <notes>Optional notes</notes>
-    </goldberg>
-    <steamless>
-      <status>not-needed</status>
-      <notes>Optional notes</notes>
-    </steamless>
-    <lastTested>2025-11-09</lastTested>
+    <status>works</status>
+    <notes>Optional notes</notes>
+    <lastTested>2025-11-10</lastTested>
   </game>
 </games>
 ```
 
-Then update `compatibility.js` line 26 to load XML:
+Then update `compatibility.js` line 37 to load XML:
 ```javascript
 loadFromXML('compatibility-data.xml');
 ```

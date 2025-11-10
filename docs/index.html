@@ -95,38 +95,93 @@
                 </div>
 
                 <!-- GameVault -->
-                <div class="app-card" data-aos="fade-up" data-aos-delay="100">
-                    <div class="app-icon">🎯</div>
-                    <h3 class="app-title">GameVault</h3>
-                    <p class="app-description">Comprehensive game library manager with advanced organization features. Keep track of your game collection with powerful search and categorization tools.</p>
+                <div class="app-card app-card-featured" data-aos="fade-up" data-aos-delay="100">
+                    <div class="app-header">
+                        <div class="app-icon">🎯</div>
+                        <h3 class="app-title">GameVault</h3>
+                    </div>
+
+                    <p class="app-description">Comprehensive game library manager with advanced organization features. Keep track of your game collection across multiple platforms and launchers.</p>
+
+                    <div class="app-features">
+                        <h4>Key Features:</h4>
+                        <ul>
+                            <li><strong>Multi-Platform Support:</strong> Manage games from Steam, Epic, GOG, and more</li>
+                            <li><strong>Smart Organization:</strong> Auto-categorization by genre, platform, and playtime</li>
+                            <li><strong>Advanced Search:</strong> Powerful filtering and sorting capabilities</li>
+                            <li><strong>Custom Tags:</strong> Create your own organizational system</li>
+                            <li><strong>Statistics Dashboard:</strong> Track your gaming habits and library value</li>
+                            <li><strong>Backup & Export:</strong> Save your library data and configurations</li>
+                        </ul>
+                    </div>
+
+                    <div class="app-tech">
+                        <strong>Tech Stack:</strong>
+                        <span class="tech-tag">Electron</span>
+                        <span class="tech-tag">React</span>
+                        <span class="tech-tag">SQLite</span>
+                    </div>
+
                     <div class="app-tags">
                         <span class="tag">Library</span>
                         <span class="tag">Management</span>
+                        <span class="tag">Organization</span>
+                        <span class="tag">Multi-Platform</span>
                     </div>
-                    <a href="https://github.com/ShayneVi/GameVault" target="_blank" class="app-link">
-                        View on GitHub
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </a>
+
+                    <div class="app-actions">
+                        <a href="https://github.com/ShayneVi/GameVault" target="_blank" class="btn btn-primary">
+                            View on GitHub
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </a>
+                    </div>
                 </div>
 
                 <!-- Steam Save Monitor -->
-                <div class="app-card" data-aos="fade-up" data-aos-delay="200">
-                    <div class="app-icon">💾</div>
-                    <h3 class="app-title">Steam Save Monitor</h3>
-                    <p class="app-description">Monitor and backup your Steam game saves automatically. Never lose your progress again with intelligent save file detection and cloud backup support.</p>
+                <div class="app-card app-card-featured" data-aos="fade-up" data-aos-delay="200">
+                    <div class="app-header">
+                        <div class="app-icon">💾</div>
+                        <h3 class="app-title">Steam Save Monitor</h3>
+                    </div>
+
+                    <p class="app-description">Automated save file backup and monitoring system for Steam games. Never lose your progress again with intelligent detection and cloud backup support.</p>
+
+                    <div class="app-features">
+                        <h4>Key Features:</h4>
+                        <ul>
+                            <li><strong>Auto-Detection:</strong> Automatically finds save files for all your Steam games</li>
+                            <li><strong>Real-Time Monitoring:</strong> Watches for changes and creates instant backups</li>
+                            <li><strong>Scheduled Backups:</strong> Set up automatic backup intervals</li>
+                            <li><strong>Version History:</strong> Keep multiple backup versions with timestamps</li>
+                            <li><strong>Cloud Integration:</strong> Sync backups to Google Drive, Dropbox, or OneDrive</li>
+                            <li><strong>One-Click Restore:</strong> Quickly recover from any backup point</li>
+                        </ul>
+                    </div>
+
+                    <div class="app-tech">
+                        <strong>Tech Stack:</strong>
+                        <span class="tech-tag">Python</span>
+                        <span class="tech-tag">WatchDog</span>
+                        <span class="tech-tag">Cloud APIs</span>
+                    </div>
+
                     <div class="app-tags">
                         <span class="tag">Backup</span>
                         <span class="tag">Saves</span>
                         <span class="tag">Steam</span>
+                        <span class="tag">Auto-Monitor</span>
                     </div>
-                    <a href="https://github.com/ShayneVi/Steam-Save-Monitor" target="_blank" class="app-link">
-                        View on GitHub
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </a>
+
+                    <div class="app-actions">
+                        <a href="https://github.com/ShayneVi/Steam-Save-Monitor" target="_blank" class="btn btn-primary">
+                            View on GitHub
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </a>
+                    </div>
                 </div>
 
                 <!-- Online Fix Store App -->
@@ -169,26 +224,26 @@
     <!-- Compatibility List Section -->
     <section id="compatibility" class="compatibility-section">
         <div class="container">
-            <h2 class="section-title">Compatibility List</h2>
-            <p class="section-subtitle">Game compatibility database for Unsteam, Goldberg, and Steamless</p>
+            <h2 class="section-title">Unsteam Compatibility List</h2>
+            <p class="section-subtitle">Community-tested game compatibility for Unsteam Online Fix</p>
 
             <div class="compatibility-card">
                 <div class="compatibility-icon">📋</div>
-                <h3>Coming Soon</h3>
-                <p>A comprehensive compatibility list is being compiled. This will include tested games with Unsteam, Goldberg, and Steamless compatibility status.</p>
+                <h3>Game Compatibility Database</h3>
+                <p>A comprehensive compatibility list for Unsteam Online Fix. Check which games work with Unsteam for LAN and online multiplayer.</p>
                 <div class="compatibility-placeholder">
                     <div class="placeholder-stats">
                         <div class="stat">
-                            <div class="stat-number">∞</div>
-                            <div class="stat-label">Games</div>
+                            <div class="stat-number">24+</div>
+                            <div class="stat-label">Games Tested</div>
                         </div>
                         <div class="stat">
-                            <div class="stat-number">3</div>
-                            <div class="stat-label">Tools</div>
+                            <div class="stat-number">12</div>
+                            <div class="stat-label">Working</div>
                         </div>
                         <div class="stat">
                             <div class="stat-number">✓</div>
-                            <div class="stat-label">Community Tested</div>
+                            <div class="stat-label">Community Verified</div>
                         </div>
                     </div>
                 </div>

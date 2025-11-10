@@ -30,8 +30,8 @@
     <!-- Header -->
     <section class="compat-header">
         <div class="container">
-            <h1 class="compat-title">Game Compatibility Database</h1>
-            <p class="compat-subtitle">Community-tested compatibility for Unsteam, Goldberg, and Steamless</p>
+            <h1 class="compat-title">Unsteam Compatibility Database</h1>
+            <p class="compat-subtitle">Community-tested game compatibility for Unsteam Online Fix</p>
 
             <!-- Search and Filter -->
             <div class="compat-controls">
@@ -44,10 +44,9 @@
                 </div>
 
                 <div class="filter-buttons">
-                    <button class="filter-btn active" data-filter="all">All</button>
-                    <button class="filter-btn" data-filter="unsteam">Unsteam</button>
-                    <button class="filter-btn" data-filter="goldberg">Goldberg</button>
-                    <button class="filter-btn" data-filter="steamless">Steamless</button>
+                    <button class="filter-btn active" data-filter="all">All Games</button>
+                    <button class="filter-btn" data-filter="works">Working</button>
+                    <button class="filter-btn" data-filter="fails">Not Working</button>
                 </div>
             </div>
 
@@ -60,13 +59,13 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">✅</div>
-                    <div class="stat-value" id="compatibleGames">0</div>
-                    <div class="stat-label">Compatible</div>
+                    <div class="stat-value" id="workingGames">0</div>
+                    <div class="stat-label">Working</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">🔧</div>
-                    <div class="stat-value" id="partialGames">0</div>
-                    <div class="stat-label">Partial Support</div>
+                    <div class="stat-icon">❌</div>
+                    <div class="stat-value" id="failingGames">0</div>
+                    <div class="stat-label">Not Working</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">👥</div>
@@ -86,24 +85,23 @@
                         <tr>
                             <th>Game Name</th>
                             <th>App ID</th>
-                            <th>Unsteam</th>
-                            <th>Goldberg</th>
-                            <th>Steamless</th>
+                            <th>Status</th>
                             <th>Notes</th>
+                            <th>Last Tested</th>
                         </tr>
                     </thead>
                     <tbody id="compatTableBody">
                         <!-- Sample data - will be replaced with actual data -->
                         <tr>
-                            <td colspan="6" class="no-data">
+                            <td colspan="5" class="no-data">
                                 <div class="no-data-content">
                                     <div class="no-data-icon">📋</div>
                                     <h3>Compatibility Data Coming Soon</h3>
-                                    <p>The community-tested compatibility database is being compiled.</p>
+                                    <p>The community-tested Unsteam compatibility database is being compiled.</p>
                                     <p>Once available, you'll be able to:</p>
                                     <ul>
                                         <li>Search for your favorite games</li>
-                                        <li>Check Unsteam, Goldberg, and Steamless compatibility</li>
+                                        <li>Check Unsteam compatibility status</li>
                                         <li>View community notes and tips</li>
                                         <li>Contribute your own test results</li>
                                     </ul>
@@ -120,19 +118,11 @@
                 <div class="legend-items">
                     <div class="legend-item">
                         <span class="status-badge status-works">✓</span>
-                        <span>Works - Fully compatible</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="status-badge status-partial">⚠</span>
-                        <span>Partial - Some features may not work</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="status-badge status-not-needed">—</span>
-                        <span>Not Needed - Tool not required</span>
+                        <span>Works - Game is compatible with Unsteam</span>
                     </div>
                     <div class="legend-item">
                         <span class="status-badge status-fails">✗</span>
-                        <span>Fails - Does not work</span>
+                        <span>Fails - Game does not work with Unsteam</span>
                     </div>
                     <div class="legend-item">
                         <span class="status-badge status-untested">?</span>

@@ -7,10 +7,9 @@ const sampleData = [
     {
         name: "Paint the Town Red",
         appId: "337320",
-        unsteam: { status: "works", notes: "LAN play confirmed" },
-        goldberg: { status: "works", notes: "Achievements work" },
-        steamless: { status: "not-needed", notes: "" },
-        lastTested: "2025-11-09"
+        status: "works",
+        notes: "LAN play confirmed",
+        lastTested: "2025-11-10"
     }
     // Add more games here
 ];
@@ -66,11 +65,10 @@ function populateTable(data) {
 
         row.innerHTML = `
             <td><strong>${game.name}</strong></td>
-            <td>${game.appId}</td>
-            <td>${getStatusBadge(game.unsteam)}</td>
-            <td>${getStatusBadge(game.goldberg)}</td>
-            <td>${getStatusBadge(game.steamless)}</td>
-            <td>${getCombinedNotes(game)}</td>
+            <td>${game.appId || 'N/A'}</td>
+            <td>${getStatusBadge(game.status)}</td>
+            <td>${game.notes || '—'}</td>
+            <td>${game.lastTested || 'Unknown'}</td>
         `;
 
         tbody.appendChild(row);
@@ -78,30 +76,17 @@ function populateTable(data) {
 }
 
 // Get status badge HTML
-function getStatusBadge(toolStatus) {
-    if (!toolStatus) return '<span class="status-badge status-untested">?</span>';
+function getStatusBadge(statusValue) {
+    if (!statusValue) return '<span class="status-badge status-untested">?</span>';
 
     const statusMap = {
         'works': { icon: '✓', class: 'status-works' },
-        'partial': { icon: '⚠', class: 'status-partial' },
-        'not-needed': { icon: '—', class: 'status-not-needed' },
         'fails': { icon: '✗', class: 'status-fails' },
         'untested': { icon: '?', class: 'status-untested' }
     };
 
-    const status = statusMap[toolStatus.status] || statusMap['untested'];
-    return `<span class="status-badge ${status.class}" title="${toolStatus.notes || ''}">${status.icon}</span>`;
-}
-
-// Get combined notes from all tools
-function getCombinedNotes(game) {
-    const notes = [];
-
-    if (game.unsteam?.notes) notes.push(`Unsteam: ${game.unsteam.notes}`);
-    if (game.goldberg?.notes) notes.push(`Goldberg: ${game.goldberg.notes}`);
-    if (game.steamless?.notes) notes.push(`Steamless: ${game.steamless.notes}`);
-
-    return notes.length > 0 ? notes.join(' | ') : '—';
+    const status = statusMap[statusValue] || statusMap['untested'];
+    return `<span class="status-badge ${status.class}">${status.icon}</span>`;
 }
 
 // Update statistics
@@ -109,30 +94,20 @@ function updateStats(data) {
     if (!data || data.length === 0) return;
 
     const totalGames = data.length;
-    let compatibleGames = 0;
-    let partialGames = 0;
+    let workingGames = 0;
+    let failingGames = 0;
 
     data.forEach(game => {
-        const allWork =
-            (game.unsteam?.status === 'works' || game.unsteam?.status === 'not-needed') &&
-            (game.goldberg?.status === 'works' || game.goldberg?.status === 'not-needed') &&
-            (game.steamless?.status === 'works' || game.steamless?.status === 'not-needed');
-
-        const someWork =
-            game.unsteam?.status === 'works' ||
-            game.goldberg?.status === 'works' ||
-            game.steamless?.status === 'works';
-
-        if (allWork) {
-            compatibleGames++;
-        } else if (someWork) {
-            partialGames++;
+        if (game.status === 'works') {
+            workingGames++;
+        } else if (game.status === 'fails') {
+            failingGames++;
         }
     });
 
     document.getElementById('totalGames').textContent = totalGames;
-    document.getElementById('compatibleGames').textContent = compatibleGames;
-    document.getElementById('partialGames').textContent = partialGames;
+    document.getElementById('workingGames').textContent = workingGames;
+    document.getElementById('failingGames').textContent = failingGames;
 }
 
 // Setup search functionality
@@ -162,15 +137,13 @@ function filterTable(searchTerm = '') {
 
         let matchesFilter = true;
         if (activeFilter !== 'all') {
-            const filterIndex = {
-                'unsteam': 2,
-                'goldberg': 3,
-                'steamless': 4
-            }[activeFilter];
+            const statusBadge = cells[2]?.querySelector('.status-badge'); // Status is now in column 2
 
-            const statusBadge = cells[filterIndex]?.querySelector('.status-badge');
-            matchesFilter = statusBadge?.classList.contains('status-works') ||
-                          statusBadge?.classList.contains('status-partial');
+            if (activeFilter === 'works') {
+                matchesFilter = statusBadge?.classList.contains('status-works');
+            } else if (activeFilter === 'fails') {
+                matchesFilter = statusBadge?.classList.contains('status-fails');
+            }
         }
 
         row.style.display = (matchesSearch && matchesFilter) ? '' : 'none';
@@ -216,14 +189,13 @@ function exportToCSV() {
         return;
     }
 
-    const headers = ['Game Name', 'App ID', 'Unsteam', 'Goldberg', 'Steamless', 'Notes'];
+    const headers = ['Game Name', 'App ID', 'Status', 'Notes', 'Last Tested'];
     const rows = compatibilityData.map(game => [
         game.name,
-        game.appId,
-        game.unsteam?.status || 'untested',
-        game.goldberg?.status || 'untested',
-        game.steamless?.status || 'untested',
-        getCombinedNotes(game).replace(/\|/g, ';')
+        game.appId || 'N/A',
+        game.status || 'untested',
+        game.notes || '',
+        game.lastTested || 'Unknown'
     ]);
 
     const csv = [headers, ...rows]
@@ -234,7 +206,7 @@ function exportToCSV() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'compatibility-list.csv';
+    a.download = 'unsteam-compatibility-list.csv';
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -254,18 +226,8 @@ async function loadFromXML(xmlUrl) {
             data.push({
                 name: game.querySelector('name')?.textContent || '',
                 appId: game.querySelector('appId')?.textContent || '',
-                unsteam: {
-                    status: game.querySelector('unsteam status')?.textContent || 'untested',
-                    notes: game.querySelector('unsteam notes')?.textContent || ''
-                },
-                goldberg: {
-                    status: game.querySelector('goldberg status')?.textContent || 'untested',
-                    notes: game.querySelector('goldberg notes')?.textContent || ''
-                },
-                steamless: {
-                    status: game.querySelector('steamless status')?.textContent || 'untested',
-                    notes: game.querySelector('steamless notes')?.textContent || ''
-                },
+                status: game.querySelector('status')?.textContent || 'untested',
+                notes: game.querySelector('notes')?.textContent || '',
                 lastTested: game.querySelector('lastTested')?.textContent || ''
             });
         });
@@ -279,6 +241,6 @@ async function loadFromXML(xmlUrl) {
 }
 
 // Console info
-console.log('%c📊 Compatibility Database', 'font-size: 16px; font-weight: bold; color: #667eea;');
+console.log('%c📊 Unsteam Compatibility Database', 'font-size: 16px; font-weight: bold; color: #667eea;');
 console.log('To populate with data, create a compatibility-data.json file in the same directory.');
 console.log('Or use loadFromXML("your-file.xml") to load from XML.');
