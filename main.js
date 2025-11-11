@@ -1525,6 +1525,15 @@ ipcMain.handle('install-globalfix', async (event, options) => {
         console.log('Backup exists?:', fs.existsSync(backupPath));
 
         steamlessApplied = true;
+
+        // Update gameExeDir and gameExeName to reflect the actual exe that was unpacked
+        // (This is important for UE5 games where we unpack the Shipping.exe instead of the main exe)
+        gameExeDir = path.dirname(exeToUnpack);
+        gameExeName = exeNameToUnpack;
+        console.log('✓ Updated game exe info for success message:');
+        console.log('  - Game Exe Dir:', gameExeDir);
+        console.log('  - Game Exe Name:', gameExeName);
+
         console.log('\n✓✓✓ STEAMLESS UNPACKING COMPLETED SUCCESSFULLY ✓✓✓');
         console.log('========================================\n');
       } catch (steamlessError) {
