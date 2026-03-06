@@ -215,10 +215,10 @@ else {
 
 Log "Scanning libraries..."
 $libraries = Get-SteamLibraryPaths -SteamPath $steamPath
-$gamePath = Find-GameByAppId -Libraries $libraries -AppId $appId
+$gamePath = Find-GameByAppId -Libraries $libraries -AppId $AppID
 
 if (-not $gamePath) {
-    Log "Game with AppID $appId not found installed." "ERROR"
+    Log "Game with AppID $AppID not found installed." "ERROR"
     Read-Host "Press Enter to exit"
     exit
 }
@@ -268,15 +268,15 @@ if ($successCount -eq $filesMap.Count) {
             
             $fullDllPath = Join-Path $gameExeDir "unsteam.dll"
             
-            Modify-UnsteamIni -IniPath $extractedIni -ExePath $gameExeFull -DllPath $fullDllPath -AppId $appId | Out-Null
-            Modify-UnsteamIni -IniPath $rootIni -ExePath $gameExeFull -DllPath $fullDllPath -AppId $appId | Out-Null
+            Modify-UnsteamIni -IniPath $extractedIni -ExePath $gameExeFull -DllPath $fullDllPath -AppId $AppID | Out-Null
+            Modify-UnsteamIni -IniPath $rootIni -ExePath $gameExeFull -DllPath $fullDllPath -AppId $AppID | Out-Null
             Log "Configured INI files for $gameName"
         }
     }
     else {
         $iniPath = Join-Path $gameExeDir "unsteam.ini"
         if (Test-Path $iniPath) {
-            Modify-UnsteamIni -IniPath $iniPath -ExePath $gameExeName -DllPath "unsteam.dll" -AppId $appId | Out-Null
+            Modify-UnsteamIni -IniPath $iniPath -ExePath $gameExeName -DllPath "unsteam.dll" -AppId $AppID | Out-Null
             Log "Configured INI file for $gameName"
         }
     }
