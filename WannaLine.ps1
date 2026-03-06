@@ -1,6 +1,6 @@
 # Require Admin Rights
 if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "[INFO] Requesting Administrator privileges..." -ForegroundColor Yellow
+    Write-Host "[ERROR] Please run this script as Administrator!" -ForegroundColor Red
     if ($PSCommandPath) {
         try {
             Start-Process PowerShell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
@@ -11,19 +11,8 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
         }
     }
     else {
-        # Running from memory (iex). Re-launch elevated with iex.
-        try {
-            $cmd = ""
-            if ($AppID) {
-                $cmd += "`$AppID = '$AppID'; "
-            }
-            $cmd += "irm `"tinyurl.com/WannabePatcher`" | iex"
-            Start-Process PowerShell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"$cmd`"" -Verb RunAs
-        }
-        catch {
-            Write-Host "[ERROR] Failed to elevate: $_" -ForegroundColor Red
-            Start-Sleep -Seconds 5
-        }
+        Write-Host "Please open PowerShell as Administrator and run your command again." -ForegroundColor Yellow
+        Start-Sleep -Seconds 5
     }
     exit
 }
@@ -215,10 +204,10 @@ else {
 
 Log "Scanning libraries..."
 $libraries = Get-SteamLibraryPaths -SteamPath $steamPath
-$gamePath = Find-GameByAppId -Libraries $libraries -AppId $AppID
+$gamePath = Find-GameByAppId -Libraries $libraries -AppId $appId
 
 if (-not $gamePath) {
-    Log "Game with AppID $AppID not found installed." "ERROR"
+    Log "Game with AppID $appId not found installed." "ERROR"
     Read-Host "Press Enter to exit"
     exit
 }
@@ -268,15 +257,15 @@ if ($successCount -eq $filesMap.Count) {
             
             $fullDllPath = Join-Path $gameExeDir "unsteam.dll"
             
-            Modify-UnsteamIni -IniPath $extractedIni -ExePath $gameExeFull -DllPath $fullDllPath -AppId $AppID | Out-Null
-            Modify-UnsteamIni -IniPath $rootIni -ExePath $gameExeFull -DllPath $fullDllPath -AppId $AppID | Out-Null
+            Modify-UnsteamIni -IniPath $extractedIni -ExePath $gameExeFull -DllPath $fullDllPath -AppId $appId | Out-Null
+            Modify-UnsteamIni -IniPath $rootIni -ExePath $gameExeFull -DllPath $fullDllPath -AppId $appId | Out-Null
             Log "Configured INI files for $gameName"
         }
     }
     else {
         $iniPath = Join-Path $gameExeDir "unsteam.ini"
         if (Test-Path $iniPath) {
-            Modify-UnsteamIni -IniPath $iniPath -ExePath $gameExeName -DllPath "unsteam.dll" -AppId $AppID | Out-Null
+            Modify-UnsteamIni -IniPath $iniPath -ExePath $gameExeName -DllPath "unsteam.dll" -AppId $appId | Out-Null
             Log "Configured INI file for $gameName"
         }
     }
