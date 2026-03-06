@@ -1,6 +1,6 @@
 # Require Admin Rights
 if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "[ERROR] Please run this script as Administrator!" -ForegroundColor Red
+    Write-Host "[INFO] Requesting Administrator privileges..." -ForegroundColor Yellow
     if ($PSCommandPath) {
         try {
             Start-Process PowerShell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
@@ -11,8 +11,19 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
         }
     }
     else {
-        Write-Host "Please open PowerShell as Administrator and run your command again." -ForegroundColor Yellow
-        Start-Sleep -Seconds 5
+        # Running from memory (iex). Re-launch elevated with iex.
+        try {
+            $cmd = ""
+            if ($AppID) {
+                $cmd += "`$AppID = '$AppID'; "
+            }
+            $cmd += "irm `"tinyurl.com/WannabePatcher`" | iex"
+            Start-Process PowerShell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"$cmd`"" -Verb RunAs
+        }
+        catch {
+            Write-Host "[ERROR] Failed to elevate: $_" -ForegroundColor Red
+            Start-Sleep -Seconds 5
+        }
     }
     exit
 }
